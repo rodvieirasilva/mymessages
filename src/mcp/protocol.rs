@@ -1,29 +1,35 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct JsonRpcRequest {
     pub jsonrpc: String,
+    #[schema(value_type = Option<Object>)]
     pub id: Option<Value>,
     pub method: String,
+    #[schema(value_type = Object)]
     #[serde(default)]
     pub params: Value,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct JsonRpcResponse {
     pub jsonrpc: String,
+    #[schema(value_type = Option<Object>)]
     pub id: Option<Value>,
+    #[schema(value_type = Option<Object>)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<JsonRpcError>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct JsonRpcError {
     pub code: i32,
     pub message: String,
+    #[schema(value_type = Option<Object>)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
 }

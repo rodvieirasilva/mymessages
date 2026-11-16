@@ -21,7 +21,7 @@ Users can choose how an LLM interacts with `mymessages`:
 
 | Option | When to Choose | Interface | Documentation |
 | :--- | :--- | :--- | :--- |
-| **Option A: Native MCP Server** | Client supports Model Context Protocol (Claude Desktop, Claude Code, Cursor) | `mymessages mcp` over `stdio` | [docs/MCP.md](docs/MCP.md) |
+| **Option A: Native MCP Server** | Client supports Model Context Protocol (Claude Desktop, Claude Code, Cursor) | `mymessages mcp` over `stdio` | [docs/MCP.md](../../docs/MCP.md) |
 | **Option B: Query Skill** | Client operates via terminal bash commands or HTTP REST calls (curl/fetch) | **CLI** & **HTTP REST** (`/v1/*`) | *This file (`SKILL.md`)* |
 
 Both options expose the exact same search and retrieval capabilities over the local database and Maildir archive.

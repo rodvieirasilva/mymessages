@@ -1,5 +1,6 @@
 pub mod attachments;
 pub mod chats;
+pub mod mcp;
 pub mod openapi;
 pub mod search;
 pub mod state;
@@ -37,6 +38,7 @@ pub fn create_router(state: AppState, static_dir: Option<PathBuf>) -> Router {
         .route("/chats", get(chats::list_chats_handler))
         .route("/chats/{id}/messages", get(chats::get_chat_messages_handler))
         .route("/attachments/{id}", get(attachments::get_attachment_handler))
+        .route("/mcp", post(mcp::mcp_http_handler))
         .route("/webhook/evolution", post(webhook::evolution_webhook_handler))
         .route("/webhook/waha", post(webhook::waha_webhook_handler));
 
