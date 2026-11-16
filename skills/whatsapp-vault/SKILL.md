@@ -1,85 +1,172 @@
 ---
 name: whatsapp-vault
-description: Search, retrieve, and inspect personal WhatsApp and messaging history from mymessages vault, and interact with live WhatsApp sessions using WAHA MCP.
+description: Search, retrieve, and inspect personal WhatsApp and messaging history using the mymessages CLI or HTTP API (/v1), and dispatch live WhatsApp messages via WAHA HTTP API.
 ---
 
-# WhatsApp Vault & Assistant Skill
+# WhatsApp Vault & Messaging Skill (CLI & HTTP)
 
-Use this skill whenever the user asks to search, locate, inspect, or summarize their personal WhatsApp conversations, find media/attachments sent or received, or compose and send messages via WhatsApp.
+Use this skill when you need to search past WhatsApp/messaging history, retrieve message timelines, or find attachments using the **CLI** or **HTTP API**, and optionally dispatch outgoing messages via **WAHA HTTP API**.
 
----
-
-## Architecture: Split Responsibilities
-
-| System | Role | Tool Server | Capabilities |
-| :--- | :--- | :--- | :--- |
-| **`mymessages`** | **Archive Vault & Search Engine** (Source of Truth) | `mymessages mcp` (stdio) | Full-text FTS5 search, conversation history, Maildir EML inspection, attachment metadata |
-| **`waha`** | **Live Gateway** (Active WhatsApp Connection) | `waha` MCP (HTTP/SSE at `/mcp`) | Send text & media, check connection / QR status, fetch live unread chats |
-
-> [!IMPORTANT]
-> `mymessages` is strictly **read-only** for historical search and context retrieval. Never attempt write/send operations via `mymessages`. To send outgoing messages, use the live `waha` MCP tools.
+> [!TIP]
+> **MCP vs Skill Choice**:
+> - If your environment supports Model Context Protocol (MCP), configure the native stdio MCP server as documented in [docs/MCP.md](docs/MCP.md).
+> - If you prefer direct CLI commands or HTTP REST calls (e.g. curl, fetch, bash tools), use this **Skill**.
 
 ---
 
-## When to Use Which Tool
+## 1. Architectural Model
 
-### 1. Searching Past Conversations or Agreements
-When asked questions like *"What did John tell me about the budget last month?"* or *"Find the PDF contract Alice sent"*:
-1. Call `mymessages:search_messages`:
-   - `query`: Keywords (e.g. `"budget"`, `"contract"`, `"invoice"`)
-   - `media_type`: `"document"`, `"image"`, or `"audio"` if looking for files
-   - `chat_id`: JID if querying a specific chat
-2. If context is needed around a message, call `mymessages:get_chat_history`:
-   - `chat_id`: The conversation ID returned by search
-   - `limit`: 20–30 messages
-   - `before`: Timestamp cursor to inspect preceding messages
+```mermaid
+flowchart LR
+    Agent["AI Agent / User"]
+    
+    subgraph Vault["mymessages Vault (Read-Only)"]
+        CLI["CLI: mymessages search / stats"]
+        HTTP["HTTP API: /v1/* (port 8765)"]
+        FTS[("SQLite FTS5 + Maildir RFC 5322")]
+        CLI --> FTS
+        HTTP --> FTS
+    end
 
-### 2. Finding Chats and Contact Details
-When asked *"Show my recent chats"* or *"Do I have a chat with +123456789?"*:
-1. Call `mymessages:list_chats`
-2. Inspect `remote_id`, `name`, `message_count`, and `last_message`
+    subgraph Live["WAHA Gateway (Live WhatsApp)"]
+        WAHA_API["HTTP API: /api/* (port 8768)"]
+        WA[("WhatsApp Network")]
+        WAHA_API --> WA
+    end
 
-### 3. Locating Media Attachments
-When asked *"Where is the photo of the whiteboard?"*:
-1. Call `mymessages:search_messages` with `has_media: true` and `media_type: "image"`
-2. Call `mymessages:get_attachment_info` with `attachment_id` to get the MIME type, SHA-256 hash, and local Maildir `.eml` path
-
-### 4. Sending Outgoing Messages (WAHA)
-When the user explicitly asks to message someone on WhatsApp:
-1. Verify the recipient phone number or JID (e.g. `1234567890@c.us`)
-2. Use WAHA's `send_text` or `send_media` tool
-3. Once sent, `mymessages` will automatically receive the outgoing message webhook and archive it to Maildir and SQLite
-
----
-
-## MCP Server Configuration
-
-To enable both tools in your environment:
-
-### Claude Desktop / Cursor (`claude_desktop_config.json`)
-```json
-{
-  "mcpServers": {
-    "mymessages": {
-      "command": "mymessages",
-      "args": ["mcp", "--config", "./mymessages.toml"]
-    },
-    "waha": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "http://localhost:8768/mcp",
-        "--header",
-        "X-Api-Key:waha-secret-key"
-      ]
-    }
-  }
-}
+    Agent -->|"CLI or GET /v1/*"| Vault
+    Agent -->|"POST /api/sendText"| Live
+    WA -.->|"webhook"| HTTP
 ```
 
-### Claude Code CLI
+- **`mymessages`**: Strictly read-only vault for searching history, viewing chat timelines, and inspecting attachments.
+- **`WAHA`**: Live gateway for sending messages and checking WhatsApp network status.
+
+---
+
+## 2. Using the CLI (`mymessages`)
+
+When running locally with access to the terminal:
+
+### Search Messages
 ```bash
-claude mcp add --transport stdio mymessages -- mymessages mcp
-claude mcp add --transport http waha http://localhost:8768/mcp --header "X-Api-Key: waha-secret-key"
+# Basic keyword search
+mymessages search "contract"
+
+# Search in a specific chat
+mymessages search "budget" --chat "1234567890@c.us"
+
+# Filter by source and limit results
+mymessages search "invoice" --source whatsapp --limit 10
+
+# Filter for messages containing attachments
+mymessages search "proposal" --has-media true
 ```
+
+### Vault Statistics & Reindexing
+```bash
+# View current vault statistics
+mymessages stats
+
+# Reindex SQLite database from Maildir proof-of-record
+mymessages reindex --from maildir --to db
+
+# Ingest test/export messages from a local folder
+mymessages adapter run folder --path ./tests/test_messages
+```
+
+---
+
+## 3. Using the HTTP API (`/v1`)
+
+When interacting over HTTP REST (default port `8765`):
+
+### 1. Full-Text Search (`GET /v1/search`)
+Query parameters:
+- `query` *(required)*: Keywords or phrases
+- `source`: `"whatsapp"`, `"folder"`
+- `chat_id`: Filter by conversation ID
+- `has_media`: `true` or `false`
+- `media_type`: `"image"`, `"audio"`, `"video"`, `"document"`
+- `is_from_me`: `true` (outgoing) or `false` (incoming)
+- `limit`: Maximum results (default: 20)
+
+```bash
+curl -s "http://localhost:8765/v1/search?query=contract&media_type=document" | jq .
+```
+
+### 2. List Conversations (`GET /v1/chats`)
+```bash
+# List all known conversations
+curl -s "http://localhost:8765/v1/chats" | jq .
+
+# Filter by source protocol
+curl -s "http://localhost:8765/v1/chats?source=whatsapp" | jq .
+```
+Response item includes: `id`, `name`, `remote_id`, `is_group`, `message_count`, `last_message`, `last_timestamp`.
+
+### 3. Retrieve Conversation Timeline (`GET /v1/chats/{id}/messages`)
+```bash
+# Retrieve recent 30 messages in a chat
+curl -s "http://localhost:8765/v1/chats/5511988887777@s.whatsapp.net/messages?limit=30" | jq .
+
+# Backward pagination using before timestamp cursor
+curl -s "http://localhost:8765/v1/chats/5511988887777@s.whatsapp.net/messages?limit=30&before=1710000000" | jq .
+```
+
+### 4. Download / Inspect Attachment (`GET /v1/attachments/{id}`)
+```bash
+# Stream attachment binary
+curl -s "http://localhost:8765/v1/attachments/att_12345" -o downloaded_file.pdf
+```
+
+### 5. Interactive API Documentation
+- OpenAPI 3.1 Spec: `http://localhost:8765/api-docs/openapi.json`
+- Swagger UI Explorer: `http://localhost:8765/swagger-ui/`
+
+---
+
+## 4. Dispatching Live Messages (WAHA HTTP API)
+
+When the user requests to send a message or media on WhatsApp:
+
+### 1. Send Text Message
+```bash
+curl -X POST "http://localhost:8768/api/sendText" \
+  -H "Content-Type: application/json" \
+  -H "X-Api-Key: waha-secret-key" \
+  -d '{
+    "session": "default",
+    "chatId": "5511999998888@c.us",
+    "text": "Hello, here is the information you requested."
+  }'
+```
+
+### 2. Send File / Document
+```bash
+curl -X POST "http://localhost:8768/api/sendFile" \
+  -H "Content-Type: application/json" \
+  -H "X-Api-Key: waha-secret-key" \
+  -d '{
+    "session": "default",
+    "chatId": "5511999998888@c.us",
+    "file": {
+      "url": "http://localhost:8765/v1/attachments/att_12345",
+      "filename": "contract.pdf"
+    },
+    "caption": "Here is the contract document."
+  }'
+```
+
+> [!NOTE]
+> All outgoing messages dispatched via WAHA automatically trigger WAHA's webhook to `mymessages` (`/v1/webhook/waha`), ensuring immediate, permanent archival in Maildir and SQLite.
+
+---
+
+## 5. Recommended Agent Workflow
+
+1. **Locate Target Chat**: Call `GET /v1/chats` or search by name.
+2. **Execute Targeted Search**: Use CLI `mymessages search "<query>"` or `GET /v1/search?query=...`.
+3. **Inspect Context**: Fetch surrounding conversation timeline with `GET /v1/chats/{id}/messages`.
+4. **Download or Verify Attachments**: If media is involved, fetch metadata or content via `/v1/attachments/{id}`.
+5. **Confirm and Act**: Report findings accurately. If the user asks to respond, dispatch via WAHA HTTP API.

@@ -12,10 +12,36 @@
 - **Strictly read-only**: Exposes search and retrieval tools only.
 
 ### Available Tools
-1. **`search_messages`**: FTS5 full-text query with keyword, chat, source, and media filters.
-2. **`list_chats`**: List conversation summaries with message counts and timestamps.
-3. **`get_chat_history`**: Retrieve chronological messages for a conversation ID.
-4. **`get_attachment_info`**: Retrieve metadata and local Maildir path for media files.
+
+#### `search_messages`
+Full-text search using SQLite FTS5 with BM25 relevance scoring and highlighted snippets.
+* **Arguments**:
+  * `query` *(string, required)*: Keywords or search phrases (e.g. `"invoice"`, `"contract"`, `"flight"`).
+  * `source` *(string, optional)*: Filter by source protocol (e.g. `"whatsapp"`).
+  * `chat_id` *(string, optional)*: Restrict search to a specific conversation ID.
+  * `has_media` *(boolean, optional)*: Filter messages that contain media attachments.
+  * `media_type` *(string, optional)*: Filter by media type (`"image"`, `"audio"`, `"document"`, `"video"`).
+  * `is_from_me` *(boolean, optional)*: `true` for outgoing, `false` for incoming.
+  * `limit` *(integer, optional)*: Maximum messages (default: 20, max: 100).
+
+#### `list_chats`
+List known conversations and group chats with metadata.
+* **Arguments**:
+  * `source` *(string, optional)*: Filter by source identifier (e.g. `"whatsapp"`).
+* **Returns**: Array of conversations with `id`, `name`, `remote_id`, `is_group`, `message_count`, and `last_message`.
+
+#### `get_chat_history`
+Retrieve chronological message timeline for a given conversation.
+* **Arguments**:
+  * `chat_id` *(string, required)*: The conversation ID or remote JID.
+  * `limit` *(integer, optional)*: Maximum messages to retrieve (default: 30).
+  * `before` *(integer, optional)*: Timestamp cursor for backward pagination.
+
+#### `get_attachment_info`
+Retrieve detailed metadata and local file location for an attachment.
+* **Arguments**:
+  * `attachment_id` *(string, required)*: Unique attachment identifier.
+* **Returns**: MIME type, file size, SHA-256 hash, and local Maildir `.eml` relative path.
 
 ---
 
@@ -43,7 +69,7 @@ flowchart LR
 
 ## 3. Configuration Example
 
-Add to `claude_desktop_config.json`:
+### Claude Desktop / Cursor (`~/.config/Claude/claude_desktop_config.json`)
 
 ```json
 {
@@ -64,4 +90,11 @@ Add to `claude_desktop_config.json`:
     }
   }
 }
+```
+
+### Claude Code CLI
+
+```bash
+claude mcp add --transport stdio mymessages -- mymessages mcp
+claude mcp add --transport http waha http://localhost:8768/mcp --header "X-Api-Key: waha-secret-key"
 ```

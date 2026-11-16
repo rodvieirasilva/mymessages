@@ -143,45 +143,32 @@ file_pattern = "*.json"
 
 ---
 
-## Model Context Protocol (MCP) for AI Assistants
+## AI Agent Integration (MCP or Skill)
 
-`mymessages` includes a native read-only MCP server over `stdio` for querying chat archives:
+AI assistants and LLM agents can connect to `mymessages` using either **Model Context Protocol (MCP)** or an **Agent Skill (CLI & HTTP)**:
 
+### Option 1: Native Read-Only MCP Server (`stdio`)
+For environments supporting MCP (Claude Desktop, Claude Code, Cursor, Goose, Antigravity):
 ```bash
 mymessages mcp
 ```
+See [docs/MCP.md](docs/MCP.md) for tool signatures (`search_messages`, `list_chats`, `get_chat_history`, `get_attachment_info`) and client setup.
 
-### Claude Desktop Setup (`claude_desktop_config.json`)
-```json
-{
-  "mcpServers": {
-    "mymessages": {
-      "command": "mymessages",
-      "args": ["mcp", "--config", "./mymessages.toml"]
-    },
-    "waha": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "http://localhost:8768/mcp",
-        "--header",
-        "X-Api-Key:waha-secret-key"
-      ]
-    }
-  }
-}
-```
-
-See [AGENTS.md](AGENTS.md) and [docs/MCP.md](docs/MCP.md) for full tool signatures and integration patterns.
+### Option 2: Agent Skill (CLI & HTTP REST)
+For agents operating via terminal commands or REST HTTP calls:
+- CLI search: `mymessages search "invoice" --source whatsapp`
+- HTTP REST API: `GET /v1/search?query=invoice`, `GET /v1/chats`
+- Live outgoing messages via WAHA HTTP API: `POST /api/sendText`
+See [skills/whatsapp-vault/SKILL.md](skills/whatsapp-vault/SKILL.md) for workflows and curl examples.
 
 ---
 
 ## Documentation
 
+- [AI Developer & Coding Rules (`AGENTS.md`)](AGENTS.md)
 - [System Architecture](docs/ARCHITECTURE.md)
-- [AI Agents Protocol (`AGENTS.md`)](AGENTS.md)
 - [Model Context Protocol Guide](docs/MCP.md)
+- [WhatsApp Vault Skill (CLI / HTTP)](skills/whatsapp-vault/SKILL.md)
 - [Ingestion Adapters Guide](docs/ADAPTERS.md)
 - [Release Process](docs/RELEASING.md)
 - [Implementation Roadmap](docs/ROADMAP.md)
