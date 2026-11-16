@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/logo-banner.svg" alt="mymessages banner" width="100%" />
+</p>
+
 # mymessages
 
 [![CI](https://github.com/rodvieirasilva/mymessages/actions/workflows/ci.yml/badge.svg)](https://github.com/rodvieirasilva/mymessages/actions/workflows/ci.yml)
@@ -101,6 +105,36 @@ mise run coverage
 # Start background server
 mise run dev
 ```
+
+---
+
+## Web Interface & Theme System
+
+`mymessages` includes an embedded, high-performance web interface served at `http://localhost:8765/`:
+
+<p align="center">
+  <img src="docs/assets/screenshot.png" alt="mymessages Web Interface" width="95%" />
+</p>
+
+### Mini Color & Theme Token System
+The UI uses CSS custom property tokens for instant theme customization and switching:
+- **Dark & Light Modes**: Switch themes live using the 🌙/☀️ button in the header, or via URL query parameter (`?theme=dark` or `?theme=light`).
+- **Persistent Preferences**: Stores preference in `localStorage` and automatically defaults to your OS preference (`prefers-color-scheme`).
+- **Design Tokens**: Defined in `web/src/style.css` under `[data-theme="dark"]` and `[data-theme="light"]`:
+  - `--bg-primary`, `--bg-secondary`, `--bg-card`: Surface levels.
+  - `--bg-outgoing`: Chat bubble background for sent messages (`#005c4b` in dark, `#d9fdd3` in light).
+  - `--accent`: Emerald branding accent (`#00a884` in dark, `#008069` in light).
+  - `--text-primary`, `--text-secondary`: High and medium contrast text.
+  - `--border`, `--border-active`: Crisp layout dividers.
+
+### Updating WebUI Screenshots
+To re-render and capture updated screenshots of both dark and light modes:
+```bash
+mise run screenshot
+# or
+npm --prefix web run screenshot
+```
+Screenshots are saved automatically to `docs/assets/screenshot-dark.png` and `docs/assets/screenshot-light.png`.
 
 ---
 

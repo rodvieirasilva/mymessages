@@ -1,6 +1,7 @@
 import { fetchChatMessages, fetchChats, searchMessages } from './api';
 import { renderFacetBar } from './facets';
 import { renderChatList, renderMessage } from './render';
+import { initTheme, toggleTheme } from './theme';
 import './style.css';
 import type { ChatSummary, SearchFilters } from './types';
 
@@ -9,6 +10,7 @@ let selectedChatId: string | null = null;
 const currentFilters: SearchFilters = { query: '' };
 
 async function init() {
+  const initialTheme = initTheme();
   const app = document.querySelector<HTMLDivElement>('#app')!;
   app.innerHTML = `
     <header class="app-header">
@@ -22,6 +24,9 @@ async function init() {
         <button id="searchBtn">Search</button>
       </div>
       <div class="header-actions">
+        <button id="themeToggleBtn" class="theme-toggle-btn" title="Toggle dark/light theme" aria-label="Toggle theme">
+          ${initialTheme === 'dark' ? '🌙' : '☀️'}
+        </button>
         <a href="/swagger-ui/" target="_blank" rel="noopener" class="swagger-link" title="OpenAPI & Swagger Documentation">
           Swagger API &rarr;
         </a>
@@ -44,6 +49,14 @@ async function init() {
 
   const searchInput = document.getElementById('searchInput') as HTMLInputElement;
   const searchBtn = document.getElementById('searchBtn') as HTMLButtonElement;
+  const themeToggleBtn = document.getElementById('themeToggleBtn') as HTMLButtonElement;
+
+  if (themeToggleBtn) {
+    themeToggleBtn.onclick = () => {
+      const next = toggleTheme();
+      themeToggleBtn.textContent = next === 'dark' ? '🌙' : '☀️';
+    };
+  }
 
   searchBtn.onclick = () => {
     currentFilters.query = searchInput.value;

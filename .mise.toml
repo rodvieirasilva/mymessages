@@ -53,6 +53,11 @@ description = "Build web assets and release binary"
 depends = ["web:build"]
 run = "cargo build --release"
 
+[tasks.screenshot]
+description = "Capture and update WebUI screenshots (dark & light themes)"
+depends = ["web:build"]
+run = "node scripts/capture_screenshot.mjs"
+
 [tasks.dev]
 description = "Run development backend server"
 run = "cargo run -- serve"
