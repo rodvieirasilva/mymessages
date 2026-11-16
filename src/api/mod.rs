@@ -37,9 +37,11 @@ pub fn create_router(state: AppState, static_dir: Option<PathBuf>) -> Router {
         .route("/chats", get(chats::list_chats_handler))
         .route("/chats/{id}/messages", get(chats::get_chat_messages_handler))
         .route("/attachments/{id}", get(attachments::get_attachment_handler))
-        .route("/webhook/evolution", post(webhook::evolution_webhook_handler));
+        .route("/webhook/evolution", post(webhook::evolution_webhook_handler))
+        .route("/webhook/waha", post(webhook::waha_webhook_handler));
 
     let mut app = Router::new()
+        .nest("/v1", api_routes.clone())
         .nest("/api/v1", api_routes)
         .with_state(state)
         .merge(openapi::swagger_ui())
@@ -74,14 +76,29 @@ mod tests {
         let state = AppState::new(db, std::env::temp_dir(), cfg);
         let router = create_router(state, None);
 
-        let req = Request::builder()
-            .uri("/api/v1/chats")
-            .body(Body::empty())
-            .unwrap();
-        let resp = router.clone().oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::OK);
+        // 1. Versioned routes (/v1) and legacy (/api/v1)
+        for path in ["/v1/chats", "/api/v1/chats", "/v1/search?query=hello", "/v1/chats/chat_test/messages"] {
+            let req = Request::builder().uri(path).body(Body::empty()).unwrap();
+            let resp = router.clone().oneshot(req).await.unwrap();
+            assert_eq!(resp.status(), StatusCode::OK, "Failed on route {}", path);
+        }
 
-        // Test OpenAPI spec endpoint
+        // 2. Attachment route (404 expected when ID not found)
+        let att_req = Request::builder().uri("/v1/attachments/unknown_att").body(Body::empty()).unwrap();
+        let att_resp = router.clone().oneshot(att_req).await.unwrap();
+        assert_eq!(att_resp.status(), StatusCode::NOT_FOUND);
+
+        // 3. Webhook endpoints
+        let waha_req = Request::builder()
+            .method("POST")
+            .uri("/v1/webhook/waha")
+            .header("Content-Type", "application/json")
+            .body(Body::from(r#"{"event":"other"}"#))
+            .unwrap();
+        let waha_resp = router.clone().oneshot(waha_req).await.unwrap();
+        assert_eq!(waha_resp.status(), StatusCode::OK);
+
+        // 4. OpenAPI spec endpoint
         let openapi_req = Request::builder()
             .uri("/api-docs/openapi.json")
             .body(Body::empty())
@@ -89,12 +106,13 @@ mod tests {
         let openapi_resp = router.clone().oneshot(openapi_req).await.unwrap();
         assert_eq!(openapi_resp.status(), StatusCode::OK);
 
-        // Test Swagger UI endpoint
-        let swagger_req = Request::builder()
-            .uri("/swagger-ui/")
-            .body(Body::empty())
-            .unwrap();
-        let swagger_resp = router.oneshot(swagger_req).await.unwrap();
+        // 5. Swagger UI endpoint & static UI assets
+        let swagger_req = Request::builder().uri("/swagger-ui/").body(Body::empty()).unwrap();
+        let swagger_resp = router.clone().oneshot(swagger_req).await.unwrap();
         assert_eq!(swagger_resp.status(), StatusCode::OK);
+
+        let css_req = Request::builder().uri("/swagger-ui/swagger-ui.css").body(Body::empty()).unwrap();
+        let css_resp = router.oneshot(css_req).await.unwrap();
+        assert_eq!(css_resp.status(), StatusCode::OK);
     }
 }

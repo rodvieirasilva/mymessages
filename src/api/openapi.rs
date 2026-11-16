@@ -12,6 +12,7 @@ use crate::index::{AttachmentInfo, ChatSummary, SearchQuery, SearchResult};
         crate::api::chats::get_chat_messages_handler,
         crate::api::attachments::get_attachment_handler,
         crate::api::webhook::evolution_webhook_handler,
+        crate::api::webhook::waha_webhook_handler,
     ),
     components(
         schemas(
@@ -49,10 +50,11 @@ mod tests {
         let doc = ApiDoc::openapi();
         let json_str = doc.to_json().unwrap();
         assert!(json_str.contains("mymessages API"));
-        assert!(json_str.contains("/api/v1/search"));
-        assert!(json_str.contains("/api/v1/chats"));
-        assert!(json_str.contains("/api/v1/chats/{id}/messages"));
-        assert!(json_str.contains("/api/v1/attachments/{id}"));
-        assert!(json_str.contains("/api/v1/webhook/evolution"));
+        assert!(json_str.contains("/v1/search"));
+        assert!(json_str.contains("/v1/chats"));
+        assert!(json_str.contains("/v1/chats/{id}/messages"));
+        assert!(json_str.contains("/v1/attachments/{id}"));
+        assert!(json_str.contains("/v1/webhook/evolution"));
+        assert!(json_str.contains("/v1/webhook/waha"));
     }
 }

@@ -1,6 +1,6 @@
 import type { ChatSummary, SearchFilters, SearchResult } from './types';
 
-const BASE_URL = '/api/v1';
+const BASE_URL = '/v1';
 
 export function getAttachmentUrl(id: string): string {
   return `${BASE_URL}/attachments/${encodeURIComponent(id)}`;
@@ -12,6 +12,8 @@ export async function searchMessages(filters: SearchFilters): Promise<SearchResu
   if (filters.source) params.set('source', filters.source);
   if (filters.chat_id) params.set('chat_id', filters.chat_id);
   if (filters.has_media !== undefined) params.set('has_media', String(filters.has_media));
+  if (filters.media_type) params.set('media_type', filters.media_type);
+  if (filters.is_from_me !== undefined) params.set('is_from_me', String(filters.is_from_me));
 
   const res = await fetch(`${BASE_URL}/search?${params.toString()}`);
   if (!res.ok) {

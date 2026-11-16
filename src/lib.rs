@@ -3,6 +3,7 @@ pub mod api;
 pub mod cli;
 pub mod config;
 pub mod index;
+pub mod mcp;
 pub mod models;
 pub mod storage;
 
@@ -22,6 +23,7 @@ use crate::storage::{MaildirStorage, StoragePipeline};
 
 pub async fn run_app() -> Result<()> {
     tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| "info".into()),
@@ -127,8 +129,12 @@ pub async fn run_app() -> Result<()> {
                 println!("1. Evolution API (WhatsApp):");
                 println!("   - Enabled:      {}", cfg.adapters.evolution.enabled);
                 println!("   - Webhook Path: {}", cfg.adapters.evolution.webhook_path);
+                println!("2. WAHA (WhatsApp HTTP API):");
+                println!("   - Enabled:      {}", cfg.adapters.waha.enabled);
+                println!("   - Webhook Path: {}", cfg.adapters.waha.webhook_path);
+                println!("   - API URL:      {}", cfg.adapters.waha.api_url);
                 if let Some(folder_cfg) = &cfg.adapters.folder {
-                    println!("2. Folder Adapter:");
+                    println!("3. Folder Adapter:");
                     println!("   - Enabled:      {}", folder_cfg.enabled);
                     println!("   - Folder Path:  {:?}", folder_cfg.folder_path);
                     println!("   - Pattern:      {}", folder_cfg.file_pattern);
@@ -191,6 +197,16 @@ pub async fn run_app() -> Result<()> {
             println!("Total Messages:    {}", total_msgs);
             println!("Total Chats:       {}", total_chats);
             println!("Total Attachments: {}", total_atts);
+        }
+
+        Commands::Mcp { config, data_dir } => {
+            let cfg = AppConfig::load_or_default(config.as_deref());
+            let base_data_dir = data_dir.unwrap_or_else(|| PathBuf::from("./data"));
+            let db_path = cfg
+                .get_storage_path("sqlite")
+                .unwrap_or_else(|| base_data_dir.join("messages.sqlite3"));
+            let db = Database::open(&db_path)?;
+            mcp::run_mcp_server(db).await?;
         }
     }
 

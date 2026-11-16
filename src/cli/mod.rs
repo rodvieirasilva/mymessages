@@ -68,6 +68,15 @@ pub enum Commands {
         command: StorageCommands,
     },
 
+    /// Run the Model Context Protocol (MCP) server over stdio for AI assistants
+    Mcp {
+        #[arg(short, long)]
+        config: Option<PathBuf>,
+
+        #[arg(short, long)]
+        data_dir: Option<PathBuf>,
+    },
+
     /// Show summary statistics of the vault
     Stats {
         #[arg(short, long)]

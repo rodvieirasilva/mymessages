@@ -3,9 +3,11 @@ use crate::models::CanonicalMessage;
 
 pub mod evolution;
 pub mod folder;
+pub mod waha;
 
 pub use evolution::EvolutionApiAdapter;
 pub use folder::FolderAdapter;
+pub use waha::WahaAdapter;
 
 pub trait SourceAdapter: Send + Sync {
     fn source_id(&self) -> &'static str;

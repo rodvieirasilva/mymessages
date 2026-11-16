@@ -96,12 +96,11 @@ This document outlines the phased delivery plan for building `mymessages` in Rus
 
 ---
 
-## Phase 8: Historical Backfill & Future Platforms
+## Phase 8: Advanced Features & AI Protocol
+- [x] Implement native Model Context Protocol (MCP) server (`mymessages mcp`) for AI assistants (Claude, Cursor, Antigravity).
+- [x] Implement WAHA (WhatsApp HTTP API) ingestion adapter with MCP companion integration.
+- [x] Add OpenAPI 3.1 specification schema and interactive Swagger UI (`/swagger-ui/`).
+- [x] Add dynamic search facets in Web UI (Source, Media Type, Direction).
 - [ ] Implement official WhatsApp chat export (`.zip` / `_chat.txt`) converter.
 - [ ] Add Telegram Adapter (export JSON or Telegram Bot API).
-- [ ] Add Model Context Protocol (MCP) server for querying chat memory via AI.
-- [ ] Implement `mymessages import`:
-  - Official WhatsApp chat export (`.zip` / `_chat.txt`).
-  - Decrypted Android `msgstore.db` direct SQLite dump.
-- [ ] Add Telegram Adapter (export JSON or Telegram Bot API).
-- [ ] Optional: Web-based reader UI or Model Context Protocol (MCP) server for querying chat memory via AI.
+- [ ] Android `msgstore.db` direct SQLite parser.

@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  test-and-lint:
+    name: Test & Enforce Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 26
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Cache Cargo Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install Web Dependencies
+        run: npm --prefix web ci
+
+      - name: Run Web Tests & Coverage (Threshold >= 80%)
+        run: npm --prefix web run test:coverage
+
+      - name: Build Web Assets
+        run: npm --prefix web run build
+
+      - name: Run Rust Unit & E2E Tests
+        run: cargo test
+
+      - name: Run Rust Coverage (Threshold >= 80%)
+        run: cargo llvm-cov --fail-under-lines 80
+
+      - name: Build Rust Release Binary
+        run: cargo build --release

@@ -24,7 +24,7 @@ describe('render helpers', () => {
     const el = renderMedia(att);
     const img = el.querySelector('img');
     expect(img).not.toBeNull();
-    expect(img?.src).toContain('/api/v1/attachments/att_1');
+    expect(img?.src).toContain('/v1/attachments/att_1');
   });
 
   it('renders audio attachment correctly', () => {
@@ -38,7 +38,7 @@ describe('render helpers', () => {
     const el = renderMedia(att);
     const audio = el.querySelector('audio');
     expect(audio).not.toBeNull();
-    expect(audio?.src).toContain('/api/v1/attachments/att_2');
+    expect(audio?.src).toContain('/v1/attachments/att_2');
   });
 
   it('renders video attachment correctly', () => {

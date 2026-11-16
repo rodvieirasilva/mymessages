@@ -90,9 +90,29 @@ impl Default for FolderAdapterConfig {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct WahaAdapterConfig {
+    pub enabled: bool,
+    pub webhook_path: String,
+    pub api_url: String,
+    pub api_key: Option<String>,
+}
+
+impl Default for WahaAdapterConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            webhook_path: "/api/v1/webhook/waha".into(),
+            api_url: "http://127.0.0.1:8768".into(),
+            api_key: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct AdaptersConfig {
     pub evolution: EvolutionAdapterConfig,
+    pub waha: WahaAdapterConfig,
     pub folder: Option<FolderAdapterConfig>,
 }
 

@@ -10,6 +10,7 @@ pub struct SearchQuery {
     pub chat_id: Option<String>,
     pub has_media: Option<bool>,
     pub media_type: Option<String>,
+    pub is_from_me: Option<bool>,
     pub limit: Option<usize>,
     pub offset: Option<usize>,
 }
@@ -75,13 +76,24 @@ pub fn search_messages(conn: &Connection, q: &SearchQuery) -> Result<Vec<SearchR
           AND (?2 IS NULL OR m.source_id = ?2)
           AND (?3 IS NULL OR m.conversation_id = ?3)
           AND (?4 IS NULL OR m.has_attachments = ?4)
+          AND (?5 IS NULL OR m.is_from_me = ?5)
+          AND (?6 IS NULL OR EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND a.media_type = ?6))
         ORDER BY m.timestamp DESC
-        LIMIT ?5 OFFSET ?6
+        LIMIT ?7 OFFSET ?8
     ";
 
     let mut stmt = conn.prepare(sql).context("Failed to prepare FTS search query")?;
     let rows = stmt.query_map(
-        rusqlite::params![match_expr, q.source, q.chat_id, q.has_media, limit as i64, offset as i64],
+        rusqlite::params![
+            match_expr,
+            q.source,
+            q.chat_id,
+            q.has_media,
+            q.is_from_me,
+            q.media_type,
+            limit as i64,
+            offset as i64
+        ],
         |row| {
             Ok(SearchResult {
                 id: row.get(0)?,

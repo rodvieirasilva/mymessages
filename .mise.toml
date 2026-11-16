@@ -11,6 +11,7 @@ MYMESSAGES_DATA_DIR = "./data"
 
 [tasks."test:rust"]
 description = "Run Rust unit and integration tests"
+depends = ["web:build"]
 run = "cargo test"
 
 [tasks."test:web"]
@@ -23,6 +24,7 @@ depends = ["test:rust", "test:web"]
 
 [tasks."coverage:rust"]
 description = "Run Rust test coverage and enforce 80% threshold"
+depends = ["web:build"]
 run = "cargo llvm-cov --fail-under-lines 80"
 
 [tasks."coverage:web"]
@@ -35,6 +37,7 @@ depends = ["coverage:rust", "coverage:web"]
 
 [tasks.e2e]
 description = "Run end-to-end integration tests"
+depends = ["web:build"]
 run = "cargo test --test e2e_*"
 
 [tasks."web:dev"]

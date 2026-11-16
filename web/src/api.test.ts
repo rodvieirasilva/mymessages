@@ -13,7 +13,7 @@ describe('api module', () => {
   });
 
   it('builds attachment url', () => {
-    expect(getAttachmentUrl('att_123/xyz')).toBe('/api/v1/attachments/att_123%2Fxyz');
+    expect(getAttachmentUrl('att_123/xyz')).toBe('/v1/attachments/att_123%2Fxyz');
   });
 
   it('calls search endpoint with parameters', async () => {
@@ -22,8 +22,17 @@ describe('api module', () => {
       json: async () => [{ id: 'm1' }],
     });
 
-    const res = await searchMessages({ query: 'hello', has_media: true });
-    expect(globalThis.fetch).toHaveBeenCalledWith('/api/v1/search?query=hello&has_media=true');
+    const res = await searchMessages({
+      query: 'hello',
+      has_media: true,
+      media_type: 'image',
+      is_from_me: true,
+      chat_id: 'chat_1',
+      source: 'whatsapp',
+    });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      '/v1/search?query=hello&source=whatsapp&chat_id=chat_1&has_media=true&media_type=image&is_from_me=true',
+    );
     expect(res).toEqual([{ id: 'm1' }]);
   });
 
@@ -43,7 +52,7 @@ describe('api module', () => {
     });
 
     const chatsAll = await fetchChats();
-    expect(globalThis.fetch).toHaveBeenCalledWith('/api/v1/chats');
+    expect(globalThis.fetch).toHaveBeenCalledWith('/v1/chats');
     expect(chatsAll).toEqual([{ id: 'c1' }]);
 
     (globalThis.fetch as any).mockResolvedValueOnce({
@@ -52,7 +61,7 @@ describe('api module', () => {
     });
 
     await fetchChats('whatsapp');
-    expect(globalThis.fetch).toHaveBeenCalledWith('/api/v1/chats?source=whatsapp');
+    expect(globalThis.fetch).toHaveBeenCalledWith('/v1/chats?source=whatsapp');
   });
 
   it('fetches chat timeline messages', async () => {
@@ -62,7 +71,7 @@ describe('api module', () => {
     });
 
     const msgs = await fetchChatMessages('c1', 20);
-    expect(globalThis.fetch).toHaveBeenCalledWith('/api/v1/chats/c1/messages?limit=20');
+    expect(globalThis.fetch).toHaveBeenCalledWith('/v1/chats/c1/messages?limit=20');
     expect(msgs).toEqual([{ id: 'm1' }]);
   });
 });

@@ -10,7 +10,7 @@ use crate::api::state::AppState;
 
 #[utoipa::path(
     get,
-    path = "/api/v1/attachments/{id}",
+    path = "/v1/attachments/{id}",
     tag = "attachments",
     params(
         ("id" = String, Path, description = "Unique attachment identifier"),

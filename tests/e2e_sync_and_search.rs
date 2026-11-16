@@ -119,7 +119,7 @@ async fn test_e2e_webhook_sync_dedup_search_and_attachment() {
 
     // 5. List chats
     let req_chats = Request::builder()
-        .uri("/api/v1/chats")
+        .uri("/v1/chats")
         .body(Body::empty())
         .unwrap();
     let resp_chats = router.clone().oneshot(req_chats).await.unwrap();
@@ -128,6 +128,52 @@ async fn test_e2e_webhook_sync_dedup_search_and_attachment() {
     let chats: Value = serde_json::from_slice(&chats_bytes).unwrap();
     assert_eq!(chats[0]["name"], "Charlie");
     assert_eq!(chats[0]["message_count"], 1);
+
+    // 6. Get chat messages
+    let chat_id = chats[0]["id"].as_str().unwrap();
+    let req_chat_msgs = Request::builder()
+        .uri(format!("/v1/chats/{}/messages", chat_id))
+        .body(Body::empty())
+        .unwrap();
+    let resp_chat_msgs = router.clone().oneshot(req_chat_msgs).await.unwrap();
+    assert_eq!(resp_chat_msgs.status(), StatusCode::OK);
+    let msgs_bytes = resp_chat_msgs.into_body().collect().await.unwrap().to_bytes();
+    let msgs: Value = serde_json::from_slice(&msgs_bytes).unwrap();
+    assert_eq!(msgs.as_array().unwrap().len(), 1);
+
+    // 7. WAHA Webhook Ingestion & Search
+    let waha_payload = serde_json::json!({
+        "event": "message",
+        "payload": {
+            "id": "WAHA_E2E_001",
+            "timestamp": 1710000050,
+            "from": "5511999998888@c.us",
+            "fromMe": false,
+            "body": "Hello from WAHA test message",
+            "_data": {
+                "notifyName": "Diana"
+            }
+        }
+    });
+    let req_waha = Request::builder()
+        .method("POST")
+        .uri("/v1/webhook/waha")
+        .header("Content-Type", "application/json")
+        .body(Body::from(serde_json::to_vec(&waha_payload).unwrap()))
+        .unwrap();
+    let resp_waha = router.clone().oneshot(req_waha).await.unwrap();
+    assert_eq!(resp_waha.status(), StatusCode::OK);
+
+    let req_search_waha = Request::builder()
+        .uri("/v1/search?query=WAHA")
+        .body(Body::empty())
+        .unwrap();
+    let resp_search_waha = router.clone().oneshot(req_search_waha).await.unwrap();
+    assert_eq!(resp_search_waha.status(), StatusCode::OK);
+    let waha_search_bytes = resp_search_waha.into_body().collect().await.unwrap().to_bytes();
+    let waha_res: Value = serde_json::from_slice(&waha_search_bytes).unwrap();
+    assert_eq!(waha_res.as_array().unwrap().len(), 1);
+    assert_eq!(waha_res[0]["sender_name"], "Diana");
 
     let _ = fs::remove_dir_all(&temp_dir);
 }
@@ -166,10 +212,33 @@ async fn test_e2e_static_files_served_by_rust() {
     let openapi_bytes = resp_openapi.into_body().collect().await.unwrap().to_bytes();
     assert!(String::from_utf8_lossy(&openapi_bytes).contains("mymessages API"));
 
-    // 4. Request Swagger UI documentation
+    // 4. Request Swagger UI documentation & asset bundle
     let req_swagger = Request::builder().uri("/swagger-ui/").body(Body::empty()).unwrap();
-    let resp_swagger = router.oneshot(req_swagger).await.unwrap();
+    let resp_swagger = router.clone().oneshot(req_swagger).await.unwrap();
     assert_eq!(resp_swagger.status(), StatusCode::OK);
+    let swagger_bytes = resp_swagger.into_body().collect().await.unwrap().to_bytes();
+    assert!(String::from_utf8_lossy(&swagger_bytes).contains("swagger-ui"));
+
+    let req_bundle = Request::builder().uri("/swagger-ui/swagger-ui-bundle.js").body(Body::empty()).unwrap();
+    let resp_bundle = router.clone().oneshot(req_bundle).await.unwrap();
+    assert_eq!(resp_bundle.status(), StatusCode::OK);
+
+    let req_css = Request::builder().uri("/swagger-ui/swagger-ui.css").body(Body::empty()).unwrap();
+    let resp_css = router.clone().oneshot(req_css).await.unwrap();
+    assert_eq!(resp_css.status(), StatusCode::OK);
+
+    let req_preset = Request::builder().uri("/swagger-ui/swagger-ui-standalone-preset.js").body(Body::empty()).unwrap();
+    let resp_preset = router.clone().oneshot(req_preset).await.unwrap();
+    assert_eq!(resp_preset.status(), StatusCode::OK);
+
+    // 5. Request versioned API routes (/v1 and /api/v1 aliases)
+    let req_v1 = Request::builder().uri("/v1/chats").body(Body::empty()).unwrap();
+    let resp_v1 = router.clone().oneshot(req_v1).await.unwrap();
+    assert_eq!(resp_v1.status(), StatusCode::OK);
+
+    let req_api_v1 = Request::builder().uri("/api/v1/chats").body(Body::empty()).unwrap();
+    let resp_api_v1 = router.oneshot(req_api_v1).await.unwrap();
+    assert_eq!(resp_api_v1.status(), StatusCode::OK);
 
     let _ = fs::remove_dir_all(&temp_dir);
 }

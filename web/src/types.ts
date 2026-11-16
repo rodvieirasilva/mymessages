@@ -37,4 +37,6 @@ export interface SearchFilters {
   source?: string;
   chat_id?: string;
   has_media?: boolean;
+  media_type?: string;
+  is_from_me?: boolean;
 }

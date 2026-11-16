@@ -20,7 +20,7 @@ pub struct ChatsFilter {
 
 #[utoipa::path(
     get,
-    path = "/api/v1/chats",
+    path = "/v1/chats",
     tag = "chats",
     params(
         ("source" = Option<String>, Query, description = "Filter conversations by source ID (e.g. whatsapp)")
@@ -47,7 +47,7 @@ pub async fn list_chats_handler(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/chats/{id}/messages",
+    path = "/v1/chats/{id}/messages",
     tag = "chats",
     params(
         ("id" = String, Path, description = "Conversation unique ID"),

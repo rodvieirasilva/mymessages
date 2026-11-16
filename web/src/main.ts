@@ -1,10 +1,12 @@
 import { fetchChatMessages, fetchChats, searchMessages } from './api';
+import { renderFacetBar } from './facets';
 import { renderChatList, renderMessage } from './render';
 import './style.css';
-import type { ChatSummary } from './types';
+import type { ChatSummary, SearchFilters } from './types';
 
 let currentChats: ChatSummary[] = [];
 let selectedChatId: string | null = null;
+const currentFilters: SearchFilters = { query: '' };
 
 async function init() {
   const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -13,6 +15,7 @@ async function init() {
       <div class="logo">
         <img src="/logo.svg" alt="mymessages" class="brand-logo" />
         <span>mymessages</span>
+        <span class="version-badge">v0.1.0</span>
       </div>
       <div class="search-bar-container">
         <input type="text" id="searchInput" placeholder="Search all messages, senders, files..." />
@@ -31,6 +34,7 @@ async function init() {
       </aside>
       <section class="content-area">
         <div class="content-header" id="contentHeader">All Messages</div>
+        <div id="facetBarContainer"></div>
         <div class="messages-container" id="messagesContainer">
           <div class="empty-state">Use search or select a chat from the left to view history.</div>
         </div>
@@ -41,13 +45,39 @@ async function init() {
   const searchInput = document.getElementById('searchInput') as HTMLInputElement;
   const searchBtn = document.getElementById('searchBtn') as HTMLButtonElement;
 
-  searchBtn.onclick = () => doSearch(searchInput.value);
-  searchInput.onkeydown = (e) => {
-    if (e.key === 'Enter') doSearch(searchInput.value);
+  searchBtn.onclick = () => {
+    currentFilters.query = searchInput.value;
+    currentFilters.chat_id = undefined;
+    selectedChatId = null;
+    renderChats();
+    runSearch();
   };
 
+  searchInput.onkeydown = (e) => {
+    if (e.key === 'Enter') {
+      currentFilters.query = searchInput.value;
+      currentFilters.chat_id = undefined;
+      selectedChatId = null;
+      renderChats();
+      runSearch();
+    }
+  };
+
+  renderFacets();
   await loadChats();
-  await doSearch('');
+  await runSearch();
+}
+
+function renderFacets() {
+  const container = document.getElementById('facetBarContainer')!;
+  container.innerHTML = '';
+  container.appendChild(
+    renderFacetBar(currentFilters, (updated) => {
+      Object.assign(currentFilters, updated);
+      renderFacets();
+      runSearch();
+    }),
+  );
 }
 
 async function loadChats() {
@@ -66,6 +96,7 @@ function renderChats() {
   container.appendChild(
     renderChatList(currentChats, selectedChatId, async (chat) => {
       selectedChatId = chat.id;
+      currentFilters.chat_id = chat.id;
       renderChats();
       await loadChatTimeline(chat);
     }),
@@ -93,17 +124,18 @@ async function loadChatTimeline(chat: ChatSummary) {
   }
 }
 
-async function doSearch(query: string) {
+async function runSearch() {
   const header = document.getElementById('contentHeader')!;
   const container = document.getElementById('messagesContainer')!;
-  header.textContent = query.trim() ? `Search results for "${query}"` : 'Recent Messages';
+  const q = currentFilters.query.trim();
+  header.textContent = q ? `Search results for "${q}"` : 'Recent Messages';
   container.innerHTML = '<div class="empty-state">Searching...</div>';
 
   try {
-    const results = await searchMessages({ query });
+    const results = await searchMessages(currentFilters);
     container.innerHTML = '';
     if (results.length === 0) {
-      container.innerHTML = '<div class="empty-state">No messages found.</div>';
+      container.innerHTML = '<div class="empty-state">No messages match your search and facet filters.</div>';
       return;
     }
     for (const msg of results) {

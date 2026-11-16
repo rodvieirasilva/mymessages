@@ -50,7 +50,22 @@ Evolution API runs as a companion service connecting to WhatsApp via the Baileys
 
 ---
 
-## 3. Future Adapters
+## 3. WAHA Adapter (WhatsApp HTTP API)
+
+WAHA (`devlikeapro/waha`) provides another self-hosted WhatsApp HTTP engine (supporting WEBJS, NOWEB, and GOWS engines).
+
+### Ingestion Flow
+1. WAHA dispatches `POST /v1/webhook/waha` with event `message` or `message.any`.
+2. The payload structure:
+   - **`id`**: Unique message ID (e.g. `false_5511999998888@c.us_3EBA...`).
+   - **`from` / `to`**: JIDs (`phone@c.us` or group `id@g.us`).
+   - **`fromMe`**: Direction flag.
+   - **`hasMedia` & `media`**: Extracted MIME type, filename, and Base64 content decoded into `CanonicalAttachment`.
+3. Ingested through `StoragePipeline` into Maildir and SQLite FTS5.
+
+---
+
+## 4. Future Adapters
 
 Because all platform specifics stop at the adapter level, adding new platforms is straightforward:
 

@@ -24,6 +24,12 @@ path = "./data/messages.sqlite3"
 enabled = true
 webhook_path = "/api/v1/webhook/evolution"
 
+[adapters.waha]
+enabled = true
+webhook_path = "/api/v1/webhook/waha"
+api_url = "http://127.0.0.1:8768"
+api_key = "waha-secret-key"
+
 [adapters.folder]
 enabled = true
 folder_path = "./tests/test_messages"
