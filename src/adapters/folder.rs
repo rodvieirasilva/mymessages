@@ -111,7 +111,7 @@ mod tests {
 
     #[test]
     fn test_folder_adapter_read_test_messages() {
-        let adapter = FolderAdapter::new("./test_messages");
+        let adapter = FolderAdapter::new("./tests/test_messages");
         let messages = adapter.read_all_messages().unwrap();
         assert!(messages.len() >= 4);
 

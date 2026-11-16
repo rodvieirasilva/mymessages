@@ -6,7 +6,7 @@ node = "26"
 
 [env]
 RUST_LOG = "info"
-MYMESSAGES_PORT = "8090"
+MYMESSAGES_PORT = "8765"
 MYMESSAGES_DATA_DIR = "./data"
 
 [tasks."test:rust"]

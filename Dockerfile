@@ -26,11 +26,11 @@ COPY --from=web-builder /app/web/dist /app/web/dist
 COPY mymessages.toml /app/mymessages.toml
 
 ENV MYMESSAGES_DATA_DIR=/data
-ENV MYMESSAGES_PORT=8090
+ENV MYMESSAGES_PORT=8765
 ENV MYMESSAGES_STATIC_DIR=/app/web/dist
 
 VOLUME ["/data"]
-EXPOSE 8090
+EXPOSE 8765
 
 ENTRYPOINT ["mymessages"]
 CMD ["serve", "--config", "/app/mymessages.toml"]

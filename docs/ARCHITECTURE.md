@@ -336,31 +336,44 @@ To guarantee that duplicate webhook events or repeated sync operations never cau
 ```yaml
 services:
   evolution-api:
-    image: atendai/evolution-api:v2.1.2
+    image: evoapicloud/evolution-api:v2.1.2
     container_name: evolution-api
     restart: always
     ports:
-      - "8080:8080"
+      - "8766:8080"
     environment:
-      - SERVER_URL=http://localhost:8080
+      - SERVER_URL=http://localhost:8766
       - DOCKER_ENV=true
       - DATABASE_ENABLED=false
+      - AUTHENTICATION_API_KEY=evolution-secret-key
       - WEBHOOK_GLOBAL_ENABLED=true
-      - WEBHOOK_GLOBAL_URL=http://mymessages:8090/api/v1/webhook/evolution
+      - WEBHOOK_GLOBAL_URL=http://mymessages:8765/api/v1/webhook/evolution
       - WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS=true
       - WEBHOOK_EVENTS_MESSAGES_UPSERT=true
       - WEBHOOK_GLOBAL_BASE64=true   # Embed media base64 directly
     volumes:
       - evolution_instances:/evolution/instances
 
+  evolution-manager:
+    image: ghcr.io/evolution-api/evolution-manager-v2:latest
+    container_name: evolution-manager
+    restart: always
+    ports:
+      - "8767:3000"                  # Visual Web Management Dashboard
+    environment:
+      - NEXT_PUBLIC_EVOLUTION_API_URL=http://localhost:8766
+      - NEXT_PUBLIC_EVOLUTION_API_KEY=evolution-secret-key
+    depends_on:
+      - evolution-api
+
   mymessages:
     build: .
     container_name: mymessages
     restart: always
     ports:
-      - "8090:8090"
+      - "8765:8765"
     environment:
-      - MYMESSAGES_PORT=8090
+      - MYMESSAGES_PORT=8765
       - MYMESSAGES_DATA_DIR=/data
       - RUST_LOG=info
     volumes:

@@ -147,8 +147,13 @@ pub async fn run_app() -> Result<()> {
                 let pipeline = StoragePipeline::from_config(&cfg, db_arc, storage_arc);
 
                 if name == "folder" {
+                    if let Some(folder_cfg) = &cfg.adapters.folder {
+                        if !folder_cfg.enabled && path.is_none() {
+                            println!("Notice: Folder adapter is disabled in configuration, running anyway via CLI command.");
+                        }
+                    }
                     let folder_path = path.or_else(|| cfg.adapters.folder.as_ref().map(|f| f.folder_path.clone()))
-                        .unwrap_or_else(|| PathBuf::from("./test_messages"));
+                        .unwrap_or_else(|| PathBuf::from("./tests/test_messages"));
                     println!("Running folder adapter on {:?}...", folder_path);
                     let report = reindex_from_folder(&pipeline, &folder_path)?;
                     println!("Ingested {} messages ({} skipped).", report.newly_indexed, report.duplicates_skipped);

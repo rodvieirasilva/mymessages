@@ -10,7 +10,10 @@ async function init() {
   const app = document.querySelector<HTMLDivElement>('#app')!;
   app.innerHTML = `
     <header class="app-header">
-      <div class="logo">💬 <span>mymessages</span></div>
+      <div class="logo">
+        <img src="/logo.svg" alt="mymessages" class="brand-logo" />
+        <span>mymessages</span>
+      </div>
       <div class="search-bar-container">
         <input type="text" id="searchInput" placeholder="Search all messages, senders, files..." />
         <button id="searchBtn">Search</button>

@@ -209,7 +209,7 @@ mod tests {
         // 1. Ingest from test_messages folder via pipeline
         let report = reindex_from_folder(
             &pipeline,
-            Path::new("./test_messages"),
+            Path::new("./tests/test_messages"),
         ).unwrap();
 
         assert!(report.total_found >= 4);

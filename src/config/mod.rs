@@ -15,7 +15,7 @@ impl Default for ServerConfig {
     fn default() -> Self {
         Self {
             host: "0.0.0.0".into(),
-            port: 8090,
+            port: 8765,
             static_dir: Some("./web/dist".into()),
             cors_allowed_origins: vec!["*".into()],
         }
@@ -84,7 +84,7 @@ impl Default for FolderAdapterConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            folder_path: "./test_messages".into(),
+            folder_path: "./tests/test_messages".into(),
             file_pattern: "*.json".into(),
         }
     }

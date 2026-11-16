@@ -31,7 +31,7 @@ async fn test_e2e_folder_adapter_ingest_and_reindex() {
     let pipeline = StoragePipeline::from_config(&cfg, db_arc.clone(), storage.clone());
 
     // 1. Ingest from test_messages folder
-    let report = reindex_from_folder(&pipeline, Path::new("./test_messages")).unwrap();
+    let report = reindex_from_folder(&pipeline, Path::new("./tests/test_messages")).unwrap();
 
     assert!(report.total_found >= 4);
     assert_eq!(report.newly_indexed, report.total_found);

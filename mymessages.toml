@@ -2,7 +2,7 @@
 
 [server]
 host = "0.0.0.0"
-port = 8090
+port = 8765
 static_dir = "./web/dist"
 cors_allowed_origins = ["*"]
 
@@ -26,5 +26,5 @@ webhook_path = "/api/v1/webhook/evolution"
 
 [adapters.folder]
 enabled = true
-folder_path = "./test_messages"
+folder_path = "./tests/test_messages"
 file_pattern = "*.json"

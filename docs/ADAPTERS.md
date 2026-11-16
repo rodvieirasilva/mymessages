@@ -30,7 +30,7 @@ pub trait SourceAdapter: Send + Sync {
 Evolution API runs as a companion service connecting to WhatsApp via the Baileys WebSocket protocol.
 
 ### Ingestion Flow
-1. Evolution API sends an HTTP `POST` request to `http://mymessages:8090/api/v1/webhook/evolution`.
+1. Evolution API sends an HTTP `POST` request to `http://mymessages:8765/api/v1/webhook/evolution`.
 2. The payload contains `event: "messages.upsert"`.
 3. The adapter extracts:
    - **Message ID**: `data.key.id`

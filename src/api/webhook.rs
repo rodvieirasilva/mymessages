@@ -13,6 +13,13 @@ pub async fn evolution_webhook_handler(
     State(state): State<AppState>,
     Json(payload): Json<Value>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    if !state.config.adapters.evolution.enabled {
+        return Err((
+            StatusCode::FORBIDDEN,
+            "Evolution API adapter is disabled".into(),
+        ));
+    }
+
     let adapter = EvolutionApiAdapter::new();
     let msg = match adapter.parse_webhook(&payload) {
         Ok(Some(m)) => m,
