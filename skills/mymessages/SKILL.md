@@ -1,172 +1,168 @@
 ---
 name: mymessages
-description: Search, retrieve, and inspect personal WhatsApp and messaging history using the mymessages CLI or HTTP API (/v1), and dispatch live WhatsApp messages via WAHA HTTP API.
+description: Query, search, and inspect already stored personal messages, conversation history, and attachments from the mymessages vault using either the CLI (mymessages search) or HTTP REST endpoints (/v1/*).
 ---
 
-# `mymessages` Vault & Messaging Skill (CLI & HTTP)
+# `mymessages` Query Skill (CLI & HTTP)
 
-Use this skill when you need to search past WhatsApp/messaging history, retrieve message timelines, or find attachments using the **CLI** or **HTTP API**, and optionally dispatch outgoing messages via **WAHA HTTP API**.
+Use this skill when an LLM needs to query, search, or inspect already stored personal messages, conversation history, or attachments from the local `mymessages` vault.
 
-> [!TIP]
-> **MCP vs Skill Choice**:
-> - If your environment supports Model Context Protocol (MCP), configure the native stdio MCP server as documented in [docs/MCP.md](docs/MCP.md).
-> - If you prefer direct CLI commands or HTTP REST calls (e.g. curl, fetch, bash tools), use this **Skill**.
-
----
-
-## 1. Architectural Model
-
-```mermaid
-flowchart LR
-    Agent["AI Agent / User"]
-    
-    subgraph Vault["mymessages Vault (Read-Only)"]
-        CLI["CLI: mymessages search / stats"]
-        HTTP["HTTP API: /v1/* (port 8765)"]
-        FTS[("SQLite FTS5 + Maildir RFC 5322")]
-        CLI --> FTS
-        HTTP --> FTS
-    end
-
-    subgraph Live["WAHA Gateway (Live WhatsApp)"]
-        WAHA_API["HTTP API: /api/* (port 8768)"]
-        WA[("WhatsApp Network")]
-        WAHA_API --> WA
-    end
-
-    Agent -->|"CLI or GET /v1/*"| Vault
-    Agent -->|"POST /api/sendText"| Live
-    WA -.->|"webhook"| HTTP
-```
-
-- **`mymessages`**: Strictly read-only vault for searching history, viewing chat timelines, and inspecting attachments.
-- **`WAHA`**: Live gateway for sending messages and checking WhatsApp network status.
+> [!IMPORTANT]
+> **Query-Only Vault**:
+> `mymessages` is strictly for querying **already stored messages** indexed from local Maildir archives and SQLite FTS5.
+> - This skill and the MCP server do **NOT** access WAHA, Evolution, or any other live adapter.
+> - If an adapter or live messaging service needs to be accessed or configured, access that adapter directly. `mymessages` does not send live messages or query live gateway states.
 
 ---
 
-## 2. Using the CLI (`mymessages`)
+## MCP Server vs. Skill
 
-When running locally with access to the terminal:
+Users can choose how an LLM interacts with `mymessages`:
 
-### Search Messages
+| Option | When to Choose | Interface | Documentation |
+| :--- | :--- | :--- | :--- |
+| **Option A: Native MCP Server** | Client supports Model Context Protocol (Claude Desktop, Claude Code, Cursor) | `mymessages mcp` over `stdio` | [docs/MCP.md](docs/MCP.md) |
+| **Option B: Query Skill** | Client operates via terminal bash commands or HTTP REST calls (curl/fetch) | **CLI** & **HTTP REST** (`/v1/*`) | *This file (`SKILL.md`)* |
+
+Both options expose the exact same search and retrieval capabilities over the local database and Maildir archive.
+
+---
+
+## Method 1: Querying via CLI (`mymessages`)
+
+When the LLM has terminal access to execute local commands:
+
+### 1. Search Messages (`mymessages search`)
 ```bash
-# Basic keyword search
-mymessages search "contract"
+# Basic full-text search
+mymessages search "invoice"
 
-# Search in a specific chat
+# Search within a specific conversation / chat
 mymessages search "budget" --chat "1234567890@c.us"
 
-# Filter by source and limit results
-mymessages search "invoice" --source whatsapp --limit 10
+# Filter by source identifier (e.g. whatsapp, folder)
+mymessages search "meeting" --source whatsapp --limit 10
 
-# Filter for messages containing attachments
-mymessages search "proposal" --has-media true
+# Filter for messages with media attachments
+mymessages search "contract" --has-media true
+
+# Specify a custom config file
+mymessages search "project" --config ./mymessages.toml
 ```
 
-### Vault Statistics & Reindexing
+**CLI Output Format**:
+The command prints matched messages with timestamp, sender, conversation name, snippet, and attached filenames.
+
+### 2. Inspect Vault Statistics (`mymessages stats`)
 ```bash
-# View current vault statistics
+# View total messages, indexed conversations, and storage status
 mymessages stats
-
-# Reindex SQLite database from Maildir proof-of-record
-mymessages reindex --from maildir --to db
-
-# Ingest test/export messages from a local folder
-mymessages adapter run folder --path ./tests/test_messages
 ```
 
 ---
 
-## 3. Using the HTTP API (`/v1`)
+## Method 2: Querying via HTTP API (`/v1/*`)
 
-When interacting over HTTP REST (default port `8765`):
+When the LLM or client queries over HTTP (default port `8765`, configurable in `mymessages.toml`):
 
 ### 1. Full-Text Search (`GET /v1/search`)
 Query parameters:
-- `query` *(required)*: Keywords or phrases
-- `source`: `"whatsapp"`, `"folder"`
+- `query` *(required)*: Search term or phrase
+- `source`: Filter by source (e.g. `whatsapp`, `folder`)
 - `chat_id`: Filter by conversation ID
 - `has_media`: `true` or `false`
 - `media_type`: `"image"`, `"audio"`, `"video"`, `"document"`
 - `is_from_me`: `true` (outgoing) or `false` (incoming)
-- `limit`: Maximum results (default: 20)
+- `limit`: Maximum messages to return (default: 20)
 
 ```bash
+# Example: Search for PDF contracts
 curl -s "http://localhost:8765/v1/search?query=contract&media_type=document" | jq .
+```
+
+**Response Format**:
+```json
+[
+  {
+    "id": "msg_001",
+    "source": "whatsapp",
+    "conversation_id": "conv_123",
+    "conversation_name": "Project Alpha",
+    "sender_name": "Alice",
+    "timestamp": 1710000000,
+    "body": "Here is the signed contract.",
+    "is_from_me": false,
+    "snippet": "Here is the signed <mark>contract</mark>.",
+    "attachments": [
+      {
+        "id": "att_456",
+        "filename": "contract.pdf",
+        "mimetype": "application/pdf",
+        "file_size": 1048576,
+        "media_type": "document"
+      }
+    ]
+  }
+]
 ```
 
 ### 2. List Conversations (`GET /v1/chats`)
 ```bash
-# List all known conversations
+# List all indexed conversations
 curl -s "http://localhost:8765/v1/chats" | jq .
 
-# Filter by source protocol
+# Filter conversations by source
 curl -s "http://localhost:8765/v1/chats?source=whatsapp" | jq .
 ```
-Response item includes: `id`, `name`, `remote_id`, `is_group`, `message_count`, `last_message`, `last_timestamp`.
+**Response Format**:
+```json
+[
+  {
+    "id": "conv_123",
+    "source_id": "whatsapp",
+    "remote_id": "1234567890@s.whatsapp.net",
+    "name": "Alice Smith",
+    "is_group": false,
+    "message_count": 42,
+    "last_message": "See you tomorrow!",
+    "last_timestamp": 1710000500
+  }
+]
+```
 
 ### 3. Retrieve Conversation Timeline (`GET /v1/chats/{id}/messages`)
 ```bash
 # Retrieve recent 30 messages in a chat
-curl -s "http://localhost:8765/v1/chats/5511988887777@s.whatsapp.net/messages?limit=30" | jq .
+curl -s "http://localhost:8765/v1/chats/conv_123/messages?limit=30" | jq .
 
 # Backward pagination using before timestamp cursor
-curl -s "http://localhost:8765/v1/chats/5511988887777@s.whatsapp.net/messages?limit=30&before=1710000000" | jq .
+curl -s "http://localhost:8765/v1/chats/conv_123/messages?limit=30&before=1710000000" | jq .
 ```
 
-### 4. Download / Inspect Attachment (`GET /v1/attachments/{id}`)
+### 4. Fetch Stored Attachment (`GET /v1/attachments/{id}`)
 ```bash
-# Stream attachment binary
-curl -s "http://localhost:8765/v1/attachments/att_12345" -o downloaded_file.pdf
+# Download/stream stored attachment binary
+curl -s "http://localhost:8765/v1/attachments/att_456" -o contract.pdf
 ```
 
-### 5. Interactive API Documentation
-- OpenAPI 3.1 Spec: `http://localhost:8765/api-docs/openapi.json`
-- Swagger UI Explorer: `http://localhost:8765/swagger-ui/`
+### 5. API Documentation
+- **OpenAPI 3.1 Spec**: `http://localhost:8765/api-docs/openapi.json`
+- **Swagger UI**: `http://localhost:8765/swagger-ui/`
 
 ---
 
-## 4. Dispatching Live Messages (WAHA HTTP API)
+## Recommended LLM Query Workflows
 
-When the user requests to send a message or media on WhatsApp:
+### Workflow 1: Answering Questions About Past Conversations
+1. Run `mymessages search "<query>"` (CLI) or `GET /v1/search?query=<query>` (HTTP).
+2. If context around a message is needed, retrieve the surrounding timeline via `GET /v1/chats/{chat_id}/messages`.
+3. Synthesize the answer citing sender, date/time, and exact message text accurately.
 
-### 1. Send Text Message
-```bash
-curl -X POST "http://localhost:8768/api/sendText" \
-  -H "Content-Type: application/json" \
-  -H "X-Api-Key: waha-secret-key" \
-  -d '{
-    "session": "default",
-    "chatId": "5511999998888@c.us",
-    "text": "Hello, here is the information you requested."
-  }'
-```
+### Workflow 2: Finding Files, Photos, or Documents
+1. Search with media filter: `GET /v1/search?query=<term>&has_media=true&media_type=document`.
+2. Locate the matching attachment in the response (`id`, `filename`, `mimetype`).
+3. If the file content or binary is needed, fetch it via `GET /v1/attachments/{id}`.
 
-### 2. Send File / Document
-```bash
-curl -X POST "http://localhost:8768/api/sendFile" \
-  -H "Content-Type: application/json" \
-  -H "X-Api-Key: waha-secret-key" \
-  -d '{
-    "session": "default",
-    "chatId": "5511999998888@c.us",
-    "file": {
-      "url": "http://localhost:8765/v1/attachments/att_12345",
-      "filename": "contract.pdf"
-    },
-    "caption": "Here is the contract document."
-  }'
-```
-
-> [!NOTE]
-> All outgoing messages dispatched via WAHA automatically trigger WAHA's webhook to `mymessages` (`/v1/webhook/waha`), ensuring immediate, permanent archival in Maildir and SQLite.
-
----
-
-## 5. Recommended Agent Workflow
-
-1. **Locate Target Chat**: Call `GET /v1/chats` or search by name.
-2. **Execute Targeted Search**: Use CLI `mymessages search "<query>"` or `GET /v1/search?query=...`.
-3. **Inspect Context**: Fetch surrounding conversation timeline with `GET /v1/chats/{id}/messages`.
-4. **Download or Verify Attachments**: If media is involved, fetch metadata or content via `/v1/attachments/{id}`.
-5. **Confirm and Act**: Report findings accurately. If the user asks to respond, dispatch via WAHA HTTP API.
+### Workflow 3: Browsing Recent Activity
+1. List chats via `GET /v1/chats` to view active contacts, groups, and message counts.
+2. Select a target conversation and inspect its recent timeline via `GET /v1/chats/{id}/messages`.

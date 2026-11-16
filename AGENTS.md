@@ -40,10 +40,10 @@ flowchart TD
 
 ### Key Principles
 1. **Maildir is the Source of Truth**: Incoming messages and attachments are saved as standard RFC 5322 `.eml` files. If the SQLite database is lost, the entire vault can be reconstructed via `mymessages reindex --from maildir --to db`.
-2. **Vault is Strictly Read-Only for Agents**: `mymessages` NEVER dispatches live outgoing messages. Live sending belongs in external companion gateways (e.g. WAHA). The vault strictly archives, indexes, and retrieves.
-3. **Dual Agent Integration**: Agents can query `mymessages` via:
+2. **Vault is Strictly for Querying Stored Messages**: `mymessages` queries only already stored and indexed messages. It NEVER dispatches live outgoing messages, nor does it access adapters (WAHA, Evolution, etc.) during queries. If users or agents need to access adapters or dispatch messages, they interact with the adapter directly.
+3. **Dual Agent Integration**: Users can choose how AI assistants query `mymessages`:
    - **MCP Server** (`mymessages mcp` over `stdio`) — documented in [docs/MCP.md](docs/MCP.md).
-   - **CLI / HTTP Skill** (`mymessages search` or `/v1/*`) — documented in [skills/whatsapp-vault/SKILL.md](skills/whatsapp-vault/SKILL.md).
+   - **CLI / HTTP Skill** (`mymessages search` or `/v1/*`) — documented in [skills/mymessages/SKILL.md](skills/mymessages/SKILL.md).
 
 ---
 
@@ -118,8 +118,7 @@ mise run web:dev     # Run frontend Vite dev server
 │   └── ROADMAP.md       # Project phases & roadmap
 ├── mymessages.toml      # Default runtime configuration
 ├── skills/              # Agent skills for CLI / HTTP interaction
-│   ├── mymessages/      # General mymessages skill
-│   └── whatsapp-vault/  # WhatsApp-specific vault skill
+│   └── mymessages/      # Query skill via CLI & HTTP API (/v1/*)
 ├── src/                 # Rust backend source
 │   ├── adapters/        # Source ingestion adapters (Evolution, WAHA, Folder)
 │   ├── api/             # Axum HTTP routes, OpenAPI, and Swagger UI

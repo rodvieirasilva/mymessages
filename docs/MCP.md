@@ -45,29 +45,7 @@ Retrieve detailed metadata and local file location for an attachment.
 
 ---
 
-## 2. Pairing with WAHA MCP (Active WhatsApp Gateway)
-
-While `mymessages` handles indexing, search, and cold-storage retrieval, **WAHA (WhatsApp HTTP API)** provides live connection and message dispatch capabilities.
-
-```mermaid
-flowchart LR
-    AI["AI Assistant (Claude / Cursor)"]
-    MM_MCP["mymessages MCP (stdio)"]
-    WAHA_MCP["WAHA MCP (HTTP / SSE)"]
-    DB[("SQLite FTS5 + Maildir")]
-    WA[("WhatsApp Network")]
-
-    AI -->|"search_messages / list_chats"| MM_MCP
-    MM_MCP --> DB
-
-    AI -->|"send_message / status"| WAHA_MCP
-    WAHA_MCP --> WA
-    WA -.->|"webhook (message.any)"| MM_MCP
-```
-
----
-
-## 3. Configuration Example
+## 2. Configuration Example
 
 ### Claude Desktop / Cursor (`~/.config/Claude/claude_desktop_config.json`)
 
@@ -77,16 +55,6 @@ flowchart LR
     "mymessages": {
       "command": "mymessages",
       "args": ["mcp", "--config", "./mymessages.toml"]
-    },
-    "waha": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "http://localhost:8768/mcp",
-        "--header",
-        "X-Api-Key:waha-secret-key"
-      ]
     }
   }
 }
@@ -96,5 +64,4 @@ flowchart LR
 
 ```bash
 claude mcp add --transport stdio mymessages -- mymessages mcp
-claude mcp add --transport http waha http://localhost:8768/mcp --header "X-Api-Key: waha-secret-key"
 ```

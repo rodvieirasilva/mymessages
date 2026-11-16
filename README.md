@@ -154,12 +154,14 @@ mymessages mcp
 ```
 See [docs/MCP.md](docs/MCP.md) for tool signatures (`search_messages`, `list_chats`, `get_chat_history`, `get_attachment_info`) and client setup.
 
-### Option 2: Agent Skill (CLI & HTTP REST)
+### Option 2: Query Skill (CLI & HTTP REST)
 For agents operating via terminal commands or REST HTTP calls:
-- CLI search: `mymessages search "invoice" --source whatsapp`
+- CLI search: `mymessages search "invoice"`
 - HTTP REST API: `GET /v1/search?query=invoice`, `GET /v1/chats`
-- Live outgoing messages via WAHA HTTP API: `POST /api/sendText`
-See [skills/whatsapp-vault/SKILL.md](skills/whatsapp-vault/SKILL.md) for workflows and curl examples.
+- See [skills/mymessages/SKILL.md](skills/mymessages/SKILL.md) for workflows, query options, and curl examples.
+
+> [!NOTE]
+> `mymessages` is strictly for querying already stored messages. Neither the MCP server nor the Skill interacts with live adapters or sends live messages. If adapter interaction is needed, connect to that adapter directly.
 
 ---
 
@@ -168,7 +170,7 @@ See [skills/whatsapp-vault/SKILL.md](skills/whatsapp-vault/SKILL.md) for workflo
 - [AI Developer & Coding Rules (`AGENTS.md`)](AGENTS.md)
 - [System Architecture](docs/ARCHITECTURE.md)
 - [Model Context Protocol Guide](docs/MCP.md)
-- [WhatsApp Vault Skill (CLI / HTTP)](skills/whatsapp-vault/SKILL.md)
+- [Query Skill (CLI / HTTP)](skills/mymessages/SKILL.md)
 - [Ingestion Adapters Guide](docs/ADAPTERS.md)
 - [Release Process](docs/RELEASING.md)
 - [Implementation Roadmap](docs/ROADMAP.md)
