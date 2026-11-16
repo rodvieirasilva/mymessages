@@ -175,6 +175,44 @@ async fn test_e2e_webhook_sync_dedup_search_and_attachment() {
     assert_eq!(waha_res.as_array().unwrap().len(), 1);
     assert_eq!(waha_res[0]["sender_name"], "Diana");
 
+    // 8. HTTP QUERY Method with Elasticsearch JSON Body
+    let query_dsl_body = serde_json::json!({
+        "query": {
+            "bool": {
+                "must": [
+                    { "match": { "body": "blueprint" } }
+                ],
+                "filter": [
+                    { "term": { "media_type": "image" } }
+                ]
+            }
+        }
+    });
+
+    let req_query_dsl = Request::builder()
+        .method("QUERY")
+        .uri("/v1/search")
+        .header("Content-Type", "application/json")
+        .body(Body::from(serde_json::to_vec(&query_dsl_body).unwrap()))
+        .unwrap();
+    let resp_query_dsl = router.clone().oneshot(req_query_dsl).await.unwrap();
+    assert_eq!(resp_query_dsl.status(), StatusCode::OK);
+    let q_bytes = resp_query_dsl.into_body().collect().await.unwrap().to_bytes();
+    let q_res: Value = serde_json::from_slice(&q_bytes).unwrap();
+    assert_eq!(q_res.as_array().unwrap().len(), 1);
+    assert_eq!(q_res[0]["sender_name"], "Charlie");
+
+    // 9. Lucene Query String Filter
+    let req_lucene = Request::builder()
+        .uri("/v1/search?query=blueprint%20from:Charlie%20type:image")
+        .body(Body::empty())
+        .unwrap();
+    let resp_lucene = router.clone().oneshot(req_lucene).await.unwrap();
+    assert_eq!(resp_lucene.status(), StatusCode::OK);
+    let lucene_bytes = resp_lucene.into_body().collect().await.unwrap().to_bytes();
+    let lucene_res: Value = serde_json::from_slice(&lucene_bytes).unwrap();
+    assert_eq!(lucene_res.as_array().unwrap().len(), 1);
+
     let _ = fs::remove_dir_all(&temp_dir);
 }
 

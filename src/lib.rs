@@ -18,7 +18,7 @@ use crate::api::create_router;
 use crate::api::state::AppState;
 use crate::cli::{AdapterCommands, Cli, Commands, StorageCommands};
 use crate::config::AppConfig;
-use crate::index::{reindex_from_folder, reindex_from_maildir, search_messages, Database, SearchQuery};
+use crate::index::{reindex_from_folder, reindex_from_maildir, search_compiled, Database, SearchQuery};
 use crate::storage::{MaildirStorage, StoragePipeline};
 
 pub async fn run_app() -> Result<()> {
@@ -56,7 +56,17 @@ pub async fn run_app() -> Result<()> {
             axum::serve(listener, app).await?;
         }
 
-        Commands::Search { query, config, source, chat, has_media, limit } => {
+        Commands::Search {
+            query,
+            config,
+            source,
+            chat,
+            has_media,
+            media_type,
+            from_date,
+            to_date,
+            limit,
+        } => {
             let cfg = AppConfig::load_or_default(config.as_deref());
             let db_path = cfg.get_storage_path("sqlite")
                 .unwrap_or_else(|| PathBuf::from("./data/messages.sqlite3"));
@@ -66,16 +76,24 @@ pub async fn run_app() -> Result<()> {
             }
 
             let db = Database::open(&db_path)?;
-            let q = SearchQuery {
+            let mut compiled = SearchQuery {
                 query,
                 source,
                 chat_id: chat,
                 has_media,
+                media_type,
                 limit: Some(limit),
                 ..Default::default()
-            };
+            }.to_compiled();
 
-            let results = search_messages(db.conn(), &q)?;
+            if let Some(fd) = from_date {
+                compiled.from_timestamp = crate::index::lucene::parse_flexible_date(&fd);
+            }
+            if let Some(td) = to_date {
+                compiled.to_timestamp = crate::index::lucene::parse_flexible_date(&td);
+            }
+
+            let results = search_compiled(db.conn(), &compiled)?;
             println!("Found {} results:", results.len());
             for r in results {
                 let ts = chrono::DateTime::from_timestamp(r.timestamp, 0)

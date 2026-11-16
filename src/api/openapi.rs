@@ -2,12 +2,12 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::api::webhook::WebhookResult;
-use crate::index::{AttachmentInfo, ChatSummary, SearchQuery, SearchResult};
+use crate::index::{AttachmentInfo, ChatSummary, SearchQuery, SearchRequest, SearchResult};
 
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        crate::api::search::search_handler,
+        crate::api::search::search_unified_handler,
         crate::api::chats::list_chats_handler,
         crate::api::chats::get_chat_messages_handler,
         crate::api::attachments::get_attachment_handler,
@@ -20,6 +20,7 @@ use crate::index::{AttachmentInfo, ChatSummary, SearchQuery, SearchResult};
             ChatSummary,
             AttachmentInfo,
             SearchQuery,
+            SearchRequest,
             WebhookResult,
         )
     ),

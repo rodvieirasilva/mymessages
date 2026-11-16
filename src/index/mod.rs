@@ -1,11 +1,18 @@
+pub mod chats;
 pub mod db;
 pub mod fts;
 pub mod hasher;
+pub mod lucene;
+pub mod metadata;
+pub mod query_dsl;
 pub mod reindex;
 pub mod writer;
 
+pub use chats::{get_chat_messages, list_chats, ChatSummary};
 pub use db::Database;
-pub use fts::{list_chats, get_chat_messages, search_messages, AttachmentInfo, ChatSummary, SearchQuery, SearchResult};
+pub use fts::{get_message_attachments, search_compiled, search_messages, AttachmentInfo, SearchQuery, SearchResult};
 pub use hasher::{is_hash_indexed, record_hash};
+pub use lucene::parse_lucene_string;
+pub use query_dsl::{BoolQuery, CompiledQuery, QueryNode, QueryStringClause, RangeClause, SearchRequest};
 pub use reindex::{reindex_from_folder, reindex_from_maildir, ReindexReport, ReindexSource, ReindexTarget};
 pub use writer::index_message;

@@ -7,7 +7,7 @@ pub mod webhook;
 
 use std::path::PathBuf;
 use axum::http::HeaderValue;
-use axum::routing::{get, post};
+use axum::routing::{any, get, post};
 use axum::Router;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tower_http::services::{ServeDir, ServeFile};
@@ -33,7 +33,7 @@ pub fn create_router(state: AppState, static_dir: Option<PathBuf>) -> Router {
     };
 
     let api_routes = Router::new()
-        .route("/search", get(search::search_handler))
+        .route("/search", any(search::search_unified_handler))
         .route("/chats", get(chats::list_chats_handler))
         .route("/chats/{id}/messages", get(chats::get_chat_messages_handler))
         .route("/attachments/{id}", get(attachments::get_attachment_handler))

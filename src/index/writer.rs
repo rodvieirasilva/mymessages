@@ -91,21 +91,32 @@ pub fn index_message(
         )?;
     }
 
-    // 6. Insert into FTS5 virtual table
+    // 6. Extract and insert metadata
+    let metadata_entries = crate::index::metadata::extract_metadata(&msg.raw_payload);
+    for (k, v) in &metadata_entries {
+        tx.execute(
+            "INSERT INTO message_metadata (message_id, key, value) VALUES (?1, ?2, ?3)",
+            rusqlite::params![full_msg_id, k, v],
+        )?;
+    }
+    let metadata_text = crate::index::metadata::format_metadata_text(&metadata_entries);
+
+    // 7. Insert into FTS5 virtual table
     let att_names_str = att_names.join(" ");
     tx.execute(
-        "INSERT INTO messages_fts (message_id, conversation_name, sender_name, body, attachment_filenames)
-         VALUES (?1, ?2, ?3, ?4, ?5)",
+        "INSERT INTO messages_fts (message_id, conversation_name, sender_name, body, attachment_filenames, metadata_text)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         rusqlite::params![
             full_msg_id,
             msg.conversation_name.as_deref().unwrap_or(""),
             msg.sender.name.as_deref().unwrap_or(""),
             msg.body.as_deref().unwrap_or(""),
             att_names_str,
+            metadata_text,
         ],
     )?;
 
-    // 7. Record indexed hash
+    // 8. Record indexed hash
     tx.execute(
         "INSERT OR IGNORE INTO indexed_hashes (content_hash) VALUES (?1)",
         [content_hash],

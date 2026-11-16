@@ -37,6 +37,9 @@ When the LLM has terminal access to execute local commands:
 # Basic full-text search
 mymessages search "invoice"
 
+# Lucene string query with sender, dates, and media filters
+mymessages search "contract from:Alice after:2024-01-01 type:document"
+
 # Search within a specific conversation / chat
 mymessages search "budget" --chat "1234567890@c.us"
 
@@ -44,7 +47,10 @@ mymessages search "budget" --chat "1234567890@c.us"
 mymessages search "meeting" --source whatsapp --limit 10
 
 # Filter for messages with media attachments
-mymessages search "contract" --has-media true
+mymessages search "contract" --has-media true --media-type document
+
+# Filter by date ranges
+mymessages search "proposal" --from-date 2024-01-01 --to-date 2024-06-30
 
 # Specify a custom config file
 mymessages search "project" --config ./mymessages.toml
@@ -63,21 +69,55 @@ mymessages stats
 
 ## Method 2: Querying via HTTP API (`/v1/*`)
 
-When the LLM or client queries over HTTP (default port `8765`, configurable in `mymessages.toml`):
+When querying over HTTP (default port `8765`, configurable in `mymessages.toml`), `mymessages` supports the safe HTTP **`QUERY`** method (IETF standard) and **`POST`** with an Elasticsearch-compatible JSON body, or standard **`GET`** with query parameters:
 
-### 1. Full-Text Search (`GET /v1/search`)
+### 1. HTTP `QUERY` Method (Elasticsearch JSON Query DSL)
+Send complex boolean, range, type, and arbitrary metadata filters in the request body:
+
+```bash
+# Complex Boolean + Filter + Range Query
+curl -X QUERY "http://localhost:8765/v1/search" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": {
+      "bool": {
+        "must": [
+          { "match": { "body": "quarterly earnings" } }
+        ],
+        "filter": [
+          { "term": { "source": "whatsapp" } },
+          { "term": { "media_type": "document" } },
+          { "term": { "is_from_me": false } },
+          { "term": { "metadata.session": "default" } },
+          {
+            "range": {
+              "timestamp": {
+                "gte": 1704067200,
+                "lte": 1710000000
+              }
+            }
+          }
+        ]
+      }
+    },
+    "sort": [{ "timestamp": "desc" }],
+    "limit": 20
+  }' | jq .
+```
+
+### 2. Full-Text & Lucene Search (`GET /v1/search`)
 Query parameters:
-- `query` *(required)*: Search term or phrase
+- `query`: Lucene query string (supports `from:`, `chat:`, `type:`, `after:`, `before:`, `meta.*:`, `is:incoming`, `has:media`)
 - `source`: Filter by source (e.g. `whatsapp`, `folder`)
 - `chat_id`: Filter by conversation ID
 - `has_media`: `true` or `false`
 - `media_type`: `"image"`, `"audio"`, `"video"`, `"document"`
 - `is_from_me`: `true` (outgoing) or `false` (incoming)
-- `limit`: Maximum messages to return (default: 20)
+- `limit`: Maximum messages to return (default: 50)
 
 ```bash
-# Example: Search for PDF contracts
-curl -s "http://localhost:8765/v1/search?query=contract&media_type=document" | jq .
+# Lucene query string via GET
+curl -s "http://localhost:8765/v1/search?query=contract+from:Alice+type:document" | jq .
 ```
 
 **Response Format**:

@@ -124,7 +124,7 @@ mise run web:dev     # Run frontend Vite dev server
 │   ├── api/             # Axum HTTP routes, OpenAPI, and Swagger UI
 │   ├── cli/             # Clap CLI subcommands
 │   ├── config/          # TOML configuration parser
-│   ├── index/           # SQLite FTS5 database, hasher, writer, reindex
+│   ├── index/           # SQLite FTS5 index, metadata extractor, Lucene/Elastic DSL, reindex
 │   ├── mcp/             # Native MCP server & read-only tools
 │   ├── models/          # Canonical domain entities
 │   ├── storage/         # RFC 5322 Maildir, EML serializer, storage sinks

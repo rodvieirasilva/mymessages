@@ -92,12 +92,22 @@ impl Database {
                 indexed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
+            CREATE TABLE IF NOT EXISTS message_metadata (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+                key TEXT NOT NULL,
+                value TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_meta_key_val ON message_metadata(key, value);
+            CREATE INDEX IF NOT EXISTS idx_meta_msg ON message_metadata(message_id);
+
             CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
                 message_id UNINDEXED,
                 conversation_name,
                 sender_name,
                 body,
                 attachment_filenames,
+                metadata_text,
                 tokenize='unicode61 remove_diacritics 2'
             );
             ",

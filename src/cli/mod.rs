@@ -38,6 +38,15 @@ pub enum Commands {
         #[arg(long)]
         has_media: Option<bool>,
 
+        #[arg(long)]
+        media_type: Option<String>,
+
+        #[arg(long)]
+        from_date: Option<String>,
+
+        #[arg(long)]
+        to_date: Option<String>,
+
         #[arg(short, long, default_value_t = 20)]
         limit: usize,
     },
@@ -131,6 +140,18 @@ mod tests {
         match cli.command {
             Commands::Storage { command: StorageCommands::List { .. } } => (),
             _ => panic!("Expected storage list command"),
+        }
+
+        let cli_search = Cli::parse_from([
+            "mymessages", "search", "invoice", "--media-type", "document", "--from-date", "2024-01-01",
+        ]);
+        match cli_search.command {
+            Commands::Search { query, media_type, from_date, .. } => {
+                assert_eq!(query, "invoice");
+                assert_eq!(media_type, Some("document".to_string()));
+                assert_eq!(from_date, Some("2024-01-01".to_string()));
+            }
+            _ => panic!("Expected search command"),
         }
     }
 }
