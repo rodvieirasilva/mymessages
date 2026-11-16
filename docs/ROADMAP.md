@@ -5,100 +5,101 @@ This document outlines the phased delivery plan for building `mymessages` in Rus
 ---
 
 ## Phase 1: Foundation & Core Engines
-- [ ] Initialize Cargo project with workspace or modular crate structure.
-- [ ] Define canonical domain models:
+- [x] Initialize Cargo project with workspace or modular crate structure.
+- [x] Define canonical domain models:
   - `CanonicalMessage`, `CanonicalParticipant`, `CanonicalAttachment`, `MediaType`.
-- [ ] Build **Maildir / EML Storage Engine**:
-  - RFC 5322 MIME message formatting using `mail-builder`.
+- [x] Build **Maildir / EML Storage Engine**:
+  - RFC 5322 MIME message formatting.
   - Atomically write to Maildir structure (`tmp/` -> `cur/`).
   - Embed text, headers, and media attachments cleanly.
-- [ ] Build **SQLite + FTS5 Index Engine**:
+- [x] Build **SQLite + FTS5 Index Engine**:
   - SQLite database initialization with WAL mode.
   - Relational schema (`sources`, `conversations`, `contacts`, `messages`, `attachments`, `indexed_hashes`).
   - FTS5 virtual table (`messages_fts`) with unicode tokenizer.
-- [ ] Implement **Content Hashing & Deduplication**:
+- [x] Implement **Content Hashing & Deduplication**:
   - Deterministic SHA-256 computation.
   - Idempotent write checks before saving to Maildir or SQLite.
-- [ ] Unit tests for MIME generation, Maildir storage, deduplication, and SQLite FTS5 indexing.
+- [x] Unit tests for MIME generation, Maildir storage, deduplication, and SQLite FTS5 indexing.
 
 ---
 
 ## Phase 2: Source Adapter Abstraction & Evolution API Implementation
-- [ ] Define the `SourceAdapter` trait:
+- [x] Define the `SourceAdapter` trait:
   ```rust
-  #[async_trait]
   pub trait SourceAdapter: Send + Sync {
       fn source_id(&self) -> &'static str;
-      async fn parse_webhook(&self, payload: serde_json::Value) -> Result<Option<CanonicalMessage>>;
+      fn parse_webhook(&self, payload: &serde_json::Value) -> Result<Option<CanonicalMessage>>;
   }
   ```
-- [ ] Implement `EvolutionApiAdapter`:
+- [x] Implement `EvolutionApiAdapter`:
   - Handle `messages.upsert` event.
   - Parse text messages (conversations, extended text with captions).
   - Parse media messages: `imageMessage`, `audioMessage` (voice notes), `videoMessage`, `documentMessage`, `stickerMessage`.
   - Extract and decode Base64 media data into binary attachments.
   - Parse sender JID, conversation JID (group vs individual), participant metadata, and timestamps.
-- [ ] Unit tests with sample Evolution API webhook fixtures.
+- [x] Unit tests with sample Evolution API webhook fixtures.
+- [x] Implement `FolderAdapter` for offline file ingestion and automated testing.
 
 ---
 
 ## Phase 3: Background Daemon & Webhook Listener
-- [ ] Build HTTP server using `axum` and `tokio`.
-- [ ] Webhook endpoints:
+- [x] Build HTTP server using `axum` and `tokio`.
+- [x] Webhook endpoints:
   - `POST /api/v1/webhook/evolution`: Ingest Evolution API events.
-  - `POST /api/v1/webhook/:source`: Generic webhook receiver for future adapters.
-  - `GET /health`: Health check and system statistics (messages indexed, storage size).
-- [ ] Graceful shutdown and signal handling.
-- [ ] Configurable storage paths via CLI flags or environment variables (`MYMESSAGES_DATA_DIR`, `MYMESSAGES_PORT`).
+  - Deduplication and idempotency verification.
+- [x] Configurable storage and server via unified `mymessages.toml` configuration.
+- [x] Configurable CORS (no hardcoded constants).
 
 ---
 
-## Phase 4: CLI Search Engine
-- [ ] Implement CLI commands using `clap`:
+## Phase 4: CLI Search Engine & Adapter Management
+- [x] Implement CLI commands using `clap`:
   - `mymessages serve`: Run the background daemon/webhook receiver.
   - `mymessages search <query>`:
     - Fast full-text search using FTS5 BM25 scoring.
-    - Options: `--sender <name>`, `--chat <name>`, `--has-media`, `--media-type <type>`, `--from <date>`, `--to <date>`, `--limit <n>`.
-    - Terminal output formatting with highlighted matches and clickable file paths.
-  - `mymessages show <message-id>`: Display full message details, header info, and attachment details.
-  - `mymessages stats`: View archive summary (total messages, media breakdown, disk usage).
+    - Options: `--source <name>`, `--chat <name>`, `--has-media`, `--limit <n>`.
+    - Terminal output formatting with highlighted matches and attachment info.
+  - `mymessages adapter list`: List all configured adapters.
+  - `mymessages adapter run <name>`: Execute adapter ingestion.
+  - `mymessages stats`: View archive summary (total messages, chats, attachments).
 
 ---
 
 ## Phase 5: Web Interface (TypeScript + Vite) & REST API
-- [ ] Implement Axum REST endpoints:
+- [x] Implement Axum REST endpoints:
   - `/api/v1/search`
   - `/api/v1/chats`
   - `/api/v1/chats/:id/messages`
   - `/api/v1/attachments/:id`
-  - `/api/v1/stats`
-- [ ] Initialize `web/` frontend using Vite + TypeScript.
-- [ ] Build search view with debounced queries, highlights, and filters (source, media, date).
-- [ ] Build chat conversation timeline view (chat bubble layout).
-- [ ] Build embedded media viewers (audio voice notes player, image viewer, document links).
-- [ ] Embed static web assets into Rust binary or serve via reverse proxy / dev server.
+- [x] Initialize `web/` frontend using Vite + Vanilla TypeScript.
+- [x] Build search view with debounced queries, highlights, and filters.
+- [x] Build chat conversation timeline view.
+- [x] Build embedded media viewers (audio voice notes player, image viewer, document links).
+- [x] Serve static web assets directly from Rust binary via `tower-http` with SPA fallback.
 
 ---
 
 ## Phase 6: Reindex & Vault Repair
-- [ ] Implement `mymessages reindex`:
-  - Recursively scan the Maildir folder tree (`cur/`).
-  - Parse `.eml` headers and MIME structure.
-  - Verify and re-populate the SQLite database and FTS5 table.
-  - Ensure zero data loss even if `messages.sqlite3` is removed.
+- [x] Implement `mymessages reindex --from <source> --to <target>`:
+  - Supports `--from maildir` (source of truth) to rebuild the SQLite database from scratch.
+  - Supports `--from folder` to batch-ingest from offline message archives.
+  - Configurable target outputs (`db`, `maildir`, or `all`).
+  - Unit and integration tests verifying zero data loss.
 
 ---
 
 ## Phase 7: Docker Compose & Self-Hosting
-- [ ] Create multi-stage `Dockerfile` producing a minimal, high-efficiency Rust binary (including the built web frontend).
-- [ ] Create `docker-compose.yml` linking:
+- [x] Create multi-stage `Dockerfile` producing a minimal, high-efficiency Rust binary with built web assets.
+- [x] Create `docker-compose.yml` linking:
   - Evolution API v2 container (Baileys engine).
   - `mymessages` container with persistent data volumes.
-- [ ] Document the initial QR code setup and webhook pairing instructions.
 
 ---
 
-## Phase 8: Historical Backfill & Extensibility
+## Phase 8: Historical Backfill & Future Platforms
+- [ ] Implement official WhatsApp chat export (`.zip` / `_chat.txt`) converter.
+- [ ] Add Telegram Adapter (export JSON or Telegram Bot API).
+- [ ] Add Model Context Protocol (MCP) server for querying chat memory via AI.
 - [ ] Implement `mymessages import`:
   - Official WhatsApp chat export (`.zip` / `_chat.txt`).
   - Decrypted Android `msgstore.db` direct SQLite dump.
