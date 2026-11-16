@@ -14,8 +14,10 @@ describe('facets module', () => {
       onChange,
     );
 
+    expect(el.dataset.testid).toBe('facet-group');
     const buttons = el.querySelectorAll('button');
     expect(buttons.length).toBe(2);
+    expect(buttons[0].dataset.testid).toBe('facet-pill');
     expect(buttons[0].classList.contains('active')).toBe(false);
     expect(buttons[1].classList.contains('active')).toBe(true);
 
@@ -34,6 +36,7 @@ describe('facets module', () => {
       },
       onChange,
     );
+    expect(bar.dataset.testid).toBe('search-facets-bar');
 
     const groups = bar.querySelectorAll('.facet-group');
     expect(groups.length).toBe(3);

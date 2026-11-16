@@ -47,4 +47,17 @@ describe('theme system', () => {
     expect(initialized).toBe('light');
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
   });
+
+  it('reads theme from URL query parameter', () => {
+    const originalHref = window.location.href;
+    try {
+      window.history.pushState({}, '', '/?theme=light');
+      expect(getPreferredTheme()).toBe('light');
+
+      window.history.pushState({}, '', '/?theme=dark');
+      expect(getPreferredTheme()).toBe('dark');
+    } finally {
+      window.history.pushState({}, '', originalHref);
+    }
+  });
 });

@@ -13,6 +13,7 @@ export function renderFacetPills(
 ): HTMLElement {
   const container = document.createElement('div');
   container.className = 'facet-group';
+  container.dataset.testid = 'facet-group';
 
   const label = document.createElement('span');
   label.className = 'facet-group-label';
@@ -26,6 +27,8 @@ export function renderFacetPills(
     const pill = document.createElement('button');
     const isSelected = opt.value === currentValue;
     pill.className = `facet-pill ${isSelected ? 'active' : ''}`;
+    pill.dataset.testid = 'facet-pill';
+    pill.setAttribute('data-facet-value', opt.value || 'all');
     pill.textContent = opt.label;
     pill.type = 'button';
     pill.onclick = () => onChange(opt.value);
@@ -42,6 +45,7 @@ export function renderFacetBar(
 ): HTMLElement {
   const bar = document.createElement('div');
   bar.className = 'search-facets-bar';
+  bar.dataset.testid = 'search-facets-bar';
 
   // 1. Source facet
   const sourceOptions: FacetOption[] = [

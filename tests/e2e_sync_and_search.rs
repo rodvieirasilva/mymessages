@@ -237,8 +237,19 @@ async fn test_e2e_static_files_served_by_rust() {
     let body_bytes = resp_root.into_body().collect().await.unwrap().to_bytes();
     let body_str = String::from_utf8_lossy(&body_bytes);
     assert!(body_str.contains("<!doctype html>") || body_str.contains("<html"));
+    assert!(body_str.contains("favicon.svg"));
+    assert!(body_str.contains("favicon.ico"));
 
-    // 2. Request SPA route (fallback to index.html)
+    // 2. Request favicons
+    let req_fav_svg = Request::builder().uri("/favicon.svg").body(Body::empty()).unwrap();
+    let resp_fav_svg = router.clone().oneshot(req_fav_svg).await.unwrap();
+    assert_eq!(resp_fav_svg.status(), StatusCode::OK);
+
+    let req_fav_ico = Request::builder().uri("/favicon.ico").body(Body::empty()).unwrap();
+    let resp_fav_ico = router.clone().oneshot(req_fav_ico).await.unwrap();
+    assert_eq!(resp_fav_ico.status(), StatusCode::OK);
+
+    // 3. Request SPA route (fallback to index.html)
     let req_spa = Request::builder().uri("/chat/12345").body(Body::empty()).unwrap();
     let resp_spa = router.clone().oneshot(req_spa).await.unwrap();
     assert_eq!(resp_spa.status(), StatusCode::OK);

@@ -21,6 +21,7 @@ export function escapeHtml(str: string): string {
 export function renderMedia(att: AttachmentInfo): HTMLElement {
   const wrapper = document.createElement('div');
   wrapper.className = 'attachment-item';
+  wrapper.dataset.testid = 'attachment-item';
   const url = getAttachmentUrl(att.id);
 
   if (att.media_type === 'image') {
@@ -57,12 +58,14 @@ export function renderMedia(att: AttachmentInfo): HTMLElement {
 export function renderMessage(msg: SearchResult): HTMLElement {
   const card = document.createElement('div');
   card.className = `message-card ${msg.is_from_me ? 'outgoing' : 'incoming'}`;
+  card.dataset.testid = 'message-card';
 
   const header = document.createElement('div');
   header.className = 'message-header';
 
   const sender = document.createElement('span');
   sender.className = 'message-sender';
+  sender.dataset.testid = 'message-sender';
   sender.textContent = msg.sender_name || (msg.is_from_me ? 'Me' : 'Unknown');
 
   const time = document.createElement('span');
@@ -82,6 +85,7 @@ export function renderMessage(msg: SearchResult): HTMLElement {
 
   const content = document.createElement('div');
   content.className = 'message-body';
+  content.dataset.testid = 'message-body';
   if (msg.snippet) {
     content.innerHTML = msg.snippet;
   } else if (msg.body) {
@@ -108,10 +112,12 @@ export function renderChatList(
 ): HTMLElement {
   const list = document.createElement('div');
   list.className = 'chat-list';
+  list.dataset.testid = 'chat-list';
 
   if (chats.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'empty-state';
+    empty.dataset.testid = 'chat-list-empty';
     empty.textContent = 'No conversations found';
     list.appendChild(empty);
     return list;
@@ -120,10 +126,12 @@ export function renderChatList(
   for (const chat of chats) {
     const item = document.createElement('div');
     item.className = `chat-item ${chat.id === selectedId ? 'active' : ''}`;
+    item.dataset.testid = 'chat-item';
     item.onclick = () => onSelect(chat);
 
     const name = document.createElement('div');
     name.className = 'chat-item-name';
+    name.dataset.testid = 'chat-item-name';
     name.textContent = chat.name || chat.remote_id;
 
     const meta = document.createElement('div');

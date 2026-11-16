@@ -20,14 +20,14 @@ async function init() {
         <span class="version-badge">v0.1.0</span>
       </div>
       <div class="search-bar-container">
-        <input type="text" id="searchInput" placeholder="Search text or Lucene (e.g. from:Alice after:2024-01-01)..." />
-        <button id="searchBtn">Search</button>
+        <input type="text" id="searchInput" data-testid="search-input" placeholder="Search text or Lucene (e.g. from:Alice after:2024-01-01)..." />
+        <button id="searchBtn" data-testid="search-button">Search</button>
       </div>
       <div class="header-actions">
-        <button id="themeToggleBtn" class="theme-toggle-btn" title="Toggle dark/light theme" aria-label="Toggle theme">
+        <button id="themeToggleBtn" class="theme-toggle-btn" data-testid="theme-toggle-button" title="Toggle dark/light theme" aria-label="Toggle theme">
           ${initialTheme === 'dark' ? '🌙' : '☀️'}
         </button>
-        <a href="/swagger-ui/" target="_blank" rel="noopener" class="swagger-link" title="OpenAPI & Swagger Documentation">
+        <a href="/swagger-ui/" target="_blank" rel="noopener" class="swagger-link" data-testid="swagger-link" title="OpenAPI & Swagger Documentation">
           Swagger API &rarr;
         </a>
       </div>
@@ -35,13 +35,13 @@ async function init() {
     <main class="app-main">
       <aside class="sidebar">
         <div class="sidebar-header">Conversations</div>
-        <div id="chatListContainer">Loading chats...</div>
+        <div id="chatListContainer" data-testid="chat-list-container">Loading chats...</div>
       </aside>
       <section class="content-area">
-        <div class="content-header" id="contentHeader">All Messages</div>
-        <div id="facetBarContainer"></div>
-        <div class="messages-container" id="messagesContainer">
-          <div class="empty-state">Use search or select a chat from the left to view history.</div>
+        <div class="content-header" id="contentHeader" data-testid="content-header">All Messages</div>
+        <div id="facetBarContainer" data-testid="facet-bar-container"></div>
+        <div class="messages-container" id="messagesContainer" data-testid="messages-container">
+          <div class="empty-state" data-testid="empty-state">Use search or select a chat from the left to view history.</div>
         </div>
       </section>
     </main>

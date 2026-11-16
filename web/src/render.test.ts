@@ -22,6 +22,7 @@ describe('render helpers', () => {
       media_type: 'image',
     };
     const el = renderMedia(att);
+    expect(el.dataset.testid).toBe('attachment-item');
     const img = el.querySelector('img');
     expect(img).not.toBeNull();
     expect(img?.src).toContain('/v1/attachments/att_1');
@@ -85,6 +86,8 @@ describe('render helpers', () => {
     };
 
     const el = renderMessage(msg);
+    expect(el.dataset.testid).toBe('message-card');
+    expect(el.querySelector('[data-testid="message-sender"]')?.textContent).toBe('Bob');
     expect(el.classList.contains('incoming')).toBe(true);
     expect(el.textContent).toContain('Bob');
     expect(el.textContent).toContain('Hello team');
@@ -95,6 +98,7 @@ describe('render helpers', () => {
       snippet: '<b>Matched</b> snippet',
     };
     const outEl = renderMessage(outgoingMsg);
+    expect(outEl.dataset.testid).toBe('message-card');
     expect(outEl.classList.contains('outgoing')).toBe(true);
     expect(outEl.innerHTML).toContain('<b>Matched</b> snippet');
   });
@@ -118,9 +122,11 @@ describe('render helpers', () => {
     ];
 
     const listEl = renderChatList(chats, 'c1', onSelect);
-    const item = listEl.querySelector('.chat-item') as HTMLElement;
+    expect(listEl.dataset.testid).toBe('chat-list');
+    const item = listEl.querySelector('[data-testid="chat-item"]') as HTMLElement;
     expect(item).not.toBeNull();
     expect(item.classList.contains('active')).toBe(true);
+    expect(item.querySelector('[data-testid="chat-item-name"]')?.textContent).toBe('Alice');
     item.click();
     expect(onSelect).toHaveBeenCalledWith(chats[0]);
   });
