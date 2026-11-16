@@ -72,7 +72,25 @@
 │  │  │ - Maildir standard    │  │   │  │ - Hash tracking   │  │  │
 │  │  └───────────────────────┘  │   │  └───────────────────┘  │  │
 │  └──────────────┬──────────────┘   └─────────────┬───────────┘  │
-└─────────────────┼────────────────────────────────┼──────────────┘
+│                 │                                │              │
+│                 └────────────────┬───────────────┘              │
+│                                  ▼                              │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │               REST API & EMBEDDED WEB SERVER              │  │
+│  │   - GET /api/v1/search (FTS5 queries, filters, snippets)  │  │
+│  │   - GET /api/v1/chats (conversation list & metadata)      │  │
+│  │   - GET /api/v1/chats/:id/messages (thread timeline)      │  │
+│  │   - GET /api/v1/attachments/:id (stream media binaries)   │  │
+│  │   - Serves Vite Single Page App (TypeScript)              │  │
+│  └───────────────────────────────┬───────────────────────────┘  │
+└──────────────────────────────────┼──────────────────────────────┘
+                                   ▼
+                        ┌─────────────────────┐
+                        │   Web UI (Vite+TS)  │
+                        │ - Instant Search    │
+                        │ - Chat Timeline     │
+                        │ - Media Players     │
+                        └─────────────────────┘
                   ▼                                ▼
        ┌─────────────────────┐          ┌─────────────────────┐
        │   Maildir on Disk   │          │  messages.sqlite3   │
@@ -356,7 +374,31 @@ volumes:
 
 ---
 
-## 8. Rust Technology Stack
+## 8. Web Interface (TypeScript + Vite) & REST API
+
+To provide a seamless search and media viewing experience, `mymessages` includes a lightweight, modern web interface built with **TypeScript** and **Vite**, backed by the Rust backend's REST API.
+
+### REST API Endpoints
+- `GET /api/v1/search?q={query}&source={source}&chat={chat}&has_media={bool}&limit={n}&offset={n}`: Full-text search with highlighted snippets and BM25 relevance ranking.
+- `GET /api/v1/chats`: List all conversations with contact names, avatars, last message timestamp, and message counts.
+- `GET /api/v1/chats/:id/messages?limit={n}&before={timestamp}`: Paginated chat timeline view.
+- `GET /api/v1/messages/:id`: Message metadata, full headers, and attachment manifest.
+- `GET /api/v1/attachments/:id`: Stream binary media (inline images, audio opus/mp3 notes, video, PDF documents).
+- `GET /api/v1/stats`: Summary counts of messages, media types, sources, and storage footprint.
+
+### Web Interface Features
+1. **Search-First UI**: Global search input with instant results, highlighting matched search terms in conversation names, sender names, text content, and attachment filenames.
+2. **Conversation Timeline**: View full chat context around any matching message (WhatsApp-style bubble layout with incoming/outgoing distinctions).
+3. **Integrated Media Player**:
+   - Audio: Voice note player with progress bar.
+   - Images: Thumbnail gallery and full-resolution lightbox viewer.
+   - Video: In-browser streaming player.
+   - Documents: Direct download and file info.
+4. **Source Filters**: Filter results across WhatsApp, Telegram, etc., or by individual/group chats.
+
+---
+
+## 9. Rust Technology Stack
 
 - **HTTP Server**: `axum` + `tokio` (async, lightweight, high performance).
 - **Serialization**: `serde`, `serde_json`.

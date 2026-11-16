@@ -65,7 +65,22 @@ This document outlines the phased delivery plan for building `mymessages` in Rus
 
 ---
 
-## Phase 5: Reindex & Vault Repair
+## Phase 5: Web Interface (TypeScript + Vite) & REST API
+- [ ] Implement Axum REST endpoints:
+  - `/api/v1/search`
+  - `/api/v1/chats`
+  - `/api/v1/chats/:id/messages`
+  - `/api/v1/attachments/:id`
+  - `/api/v1/stats`
+- [ ] Initialize `web/` frontend using Vite + TypeScript.
+- [ ] Build search view with debounced queries, highlights, and filters (source, media, date).
+- [ ] Build chat conversation timeline view (chat bubble layout).
+- [ ] Build embedded media viewers (audio voice notes player, image viewer, document links).
+- [ ] Embed static web assets into Rust binary or serve via reverse proxy / dev server.
+
+---
+
+## Phase 6: Reindex & Vault Repair
 - [ ] Implement `mymessages reindex`:
   - Recursively scan the Maildir folder tree (`cur/`).
   - Parse `.eml` headers and MIME structure.
@@ -74,8 +89,8 @@ This document outlines the phased delivery plan for building `mymessages` in Rus
 
 ---
 
-## Phase 6: Docker Compose & Self-Hosting
-- [ ] Create multi-stage `Dockerfile` producing a minimal, high-efficiency Rust binary.
+## Phase 7: Docker Compose & Self-Hosting
+- [ ] Create multi-stage `Dockerfile` producing a minimal, high-efficiency Rust binary (including the built web frontend).
 - [ ] Create `docker-compose.yml` linking:
   - Evolution API v2 container (Baileys engine).
   - `mymessages` container with persistent data volumes.
@@ -83,7 +98,7 @@ This document outlines the phased delivery plan for building `mymessages` in Rus
 
 ---
 
-## Phase 7: Historical Backfill & Extensibility
+## Phase 8: Historical Backfill & Extensibility
 - [ ] Implement `mymessages import`:
   - Official WhatsApp chat export (`.zip` / `_chat.txt`).
   - Decrypted Android `msgstore.db` direct SQLite dump.
