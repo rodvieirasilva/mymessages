@@ -1,23 +1,28 @@
 use serde_json::{json, Value};
-use crate::index::{get_chat_messages, list_chats, search_messages, Database, SearchQuery};
+use crate::index::{get_chat_messages, list_chats, search_compiled, Database, SearchRequest};
 use super::protocol::{McpCallToolResult, McpTool};
 
 pub fn get_available_tools() -> Vec<McpTool> {
     vec![
         McpTool {
             name: "search_messages".into(),
-            description: "Search messages in the local vault using SQLite FTS5 full-text search. Returns matching messages with relevance snippets, sender, timestamp, and attachments.".into(),
+            description: "Search messages in the vault using SQLite FTS5, Lucene query syntax, or Elasticsearch JSON Query DSL. Supports date ranges, sender filters, media types, and arbitrary metadata.".into(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
-                    "query": { "type": "string", "description": "Search keyword or phrase" },
-                    "chat_id": { "type": "string", "description": "Optional conversation ID to filter by" },
-                    "source": { "type": "string", "description": "Optional source filter (e.g. 'whatsapp')" },
-                    "has_media": { "type": "boolean", "description": "Filter for messages with attachments" },
+                    "query": { "type": "string", "description": "Search keyword or Lucene query (e.g. 'contract from:Alice after:2024-01-01 type:document meta.session:default')" },
+                    "query_dsl": { "type": "object", "description": "Optional Elasticsearch-style JSON Query DSL object (e.g. {'bool': {'must': [...], 'filter': [...]}})" },
+                    "from_date": { "type": "string", "description": "Filter on or after this date (ISO-8601 or YYYY-MM-DD)" },
+                    "to_date": { "type": "string", "description": "Filter on or before this date (ISO-8601 or YYYY-MM-DD)" },
+                    "sender": { "type": "string", "description": "Filter by sender name or ID" },
+                    "chat_id": { "type": "string", "description": "Optional conversation ID or remote JID" },
+                    "source": { "type": "string", "description": "Source filter: 'whatsapp', 'folder', etc." },
+                    "has_media": { "type": "boolean", "description": "Filter messages with attachments" },
                     "media_type": { "type": "string", "description": "Filter by media type: 'image', 'audio', 'document', 'video'" },
+                    "is_from_me": { "type": "boolean", "description": "true for outgoing, false for incoming" },
+                    "metadata": { "type": "object", "description": "Key-value map of arbitrary metadata filters" },
                     "limit": { "type": "integer", "description": "Max results to return (default 20, max 100)" }
-                },
-                "required": ["query"]
+                }
             }),
         },
         McpTool {
@@ -60,26 +65,36 @@ pub fn get_available_tools() -> Vec<McpTool> {
 pub fn execute_tool(db: &Database, name: &str, args: &Value) -> McpCallToolResult {
     match name {
         "search_messages" => {
-            let query = args.get("query").and_then(|q| q.as_str()).unwrap_or("").to_string();
-            let chat_id = args.get("chat_id").and_then(|c| c.as_str()).map(|s| s.to_string());
-            let source = args.get("source").and_then(|s| s.as_str()).map(|s| s.to_string());
-            let has_media = args.get("has_media").and_then(|h| h.as_bool());
-            let media_type = args.get("media_type").and_then(|m| m.as_str()).map(|s| s.to_string());
-            let is_from_me = args.get("is_from_me").and_then(|f| f.as_bool());
             let limit = args.get("limit").and_then(|l| l.as_u64()).map(|u| u as usize).unwrap_or(20);
 
-            let sq = SearchQuery {
-                query,
-                source,
-                chat_id,
-                has_media,
-                media_type,
-                is_from_me,
-                limit: Some(limit),
-                offset: Some(0),
+            let mut req = if let Some(dsl) = args.get("query_dsl") {
+                SearchRequest { query: Some(dsl.clone()), ..Default::default() }
+            } else {
+                let query_str = args.get("query").and_then(|q| q.as_str()).map(|s| s.to_string());
+                SearchRequest { query_string: query_str, ..Default::default() }
             };
 
-            match search_messages(db.conn(), &sq) {
+            req.from_date = args.get("from_date").and_then(|d| d.as_str()).map(|s| s.to_string());
+            req.to_date = args.get("to_date").and_then(|d| d.as_str()).map(|s| s.to_string());
+            req.sender = args.get("sender").and_then(|s| s.as_str()).map(|s| s.to_string());
+            req.chat_id = args.get("chat_id").and_then(|c| c.as_str()).map(|s| s.to_string());
+            req.source = args.get("source").and_then(|s| s.as_str()).map(|s| s.to_string());
+            req.has_media = args.get("has_media").and_then(|h| h.as_bool());
+            req.media_type = args.get("media_type").and_then(|m| m.as_str()).map(|s| s.to_string());
+            req.is_from_me = args.get("is_from_me").and_then(|f| f.as_bool());
+            req.limit = Some(limit);
+
+            if let Some(meta_obj) = args.get("metadata").and_then(|m| m.as_object()) {
+                let mut map = std::collections::HashMap::new();
+                for (k, v) in meta_obj {
+                    let val_str = v.as_str().map(|s| s.to_string()).unwrap_or_else(|| v.to_string());
+                    map.insert(k.clone(), val_str);
+                }
+                req.metadata = Some(map);
+            }
+
+            let compiled = req.compile();
+            match search_compiled(db.conn(), &compiled) {
                 Ok(results) => {
                     let json_text = serde_json::to_string_pretty(&results).unwrap_or_default();
                     McpCallToolResult::text(format!("Found {} messages:\n{}", results.len(), json_text))
@@ -157,91 +172,5 @@ pub fn execute_tool(db: &Database, name: &str, args: &Value) -> McpCallToolResul
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::index::writer::index_message;
-    use crate::models::{CanonicalAttachment, CanonicalMessage, CanonicalParticipant};
-    use chrono::Utc;
-
-    fn setup_test_db() -> Database {
-        let mut db = Database::in_memory().unwrap();
-        let att = CanonicalAttachment::new(
-            Some("doc.pdf".into()),
-            "application/pdf".into(),
-            b"pdfdata".to_vec(),
-        );
-        let msg = CanonicalMessage {
-            id: "msg_mcp_1".into(),
-            source: "whatsapp".into(),
-            conversation_id: "chat_mcp_1".into(),
-            conversation_name: Some("Project MCP".into()),
-            is_group: false,
-            sender: CanonicalParticipant {
-                id: "sender_1".into(),
-                name: Some("Dave".into()),
-                phone_number: Some("+12345".into()),
-            },
-            recipients: vec![],
-            timestamp: Utc::now(),
-            body: Some("Here is the contract document for our project".into()),
-            attachments: vec![att],
-            reply_to_id: None,
-            is_from_me: false,
-            raw_payload: json!({}),
-        };
-        index_message(db.conn_mut(), &msg, "hash_mcp_1", "mail/wh/cur/1.eml").unwrap();
-        db
-    }
-
-    #[test]
-    fn test_execute_mcp_tools() {
-        let db = setup_test_db();
-
-        // 1. search_messages
-        let res = execute_tool(&db, "search_messages", &json!({ "query": "contract" }));
-        assert!(!res.is_error);
-        assert!(res.content[0].text.contains("Found 1 messages"));
-
-        // 2. list_chats
-        let res_chats = execute_tool(&db, "list_chats", &json!({}));
-        assert!(!res_chats.is_error);
-        assert!(res_chats.content[0].text.contains("Retrieved 1 conversations"));
-
-        // 3. get_chat_history
-        let res_hist = execute_tool(
-            &db,
-            "get_chat_history",
-            &json!({ "chat_id": "whatsapp:chat_mcp_1" }),
-        );
-        assert!(!res_hist.is_error);
-        assert!(res_hist.content[0].text.contains("Retrieved 1 messages"));
-
-        // 4. get_attachment_info
-        let att_id: String = db.conn().query_row("SELECT id FROM attachments LIMIT 1", [], |r| r.get(0)).unwrap();
-        let res_att = execute_tool(
-            &db,
-            "get_attachment_info",
-            &json!({ "attachment_id": att_id }),
-        );
-        assert!(!res_att.is_error);
-        assert!(res_att.content[0].text.contains("doc.pdf"));
-
-        // Missing param error
-        let err_hist = execute_tool(&db, "get_chat_history", &json!({}));
-        assert!(err_hist.is_error);
-
-        let err_att = execute_tool(&db, "get_attachment_info", &json!({}));
-        assert!(err_att.is_error);
-
-        let not_found_att = execute_tool(
-            &db,
-            "get_attachment_info",
-            &json!({ "attachment_id": "none" }),
-        );
-        assert!(not_found_att.is_error);
-
-        // Unknown tool
-        let unknown = execute_tool(&db, "random_tool", &json!({}));
-        assert!(unknown.is_error);
-    }
-}
+#[path = "tools_test.rs"]
+mod tests;

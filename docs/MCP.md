@@ -14,14 +14,19 @@
 ### Available Tools
 
 #### `search_messages`
-Full-text search using SQLite FTS5 with BM25 relevance scoring and highlighted snippets.
+Full-text search using SQLite FTS5, Lucene query syntax, or Elasticsearch-style JSON Query DSL with highlighted snippets.
 * **Arguments**:
-  * `query` *(string, required)*: Keywords or search phrases (e.g. `"invoice"`, `"contract"`, `"flight"`).
+  * `query` *(string, optional)*: Keywords, phrases, or Lucene string query (e.g. `"contract from:Alice after:2024-01-01 type:document meta.session:default"`).
+  * `query_dsl` *(object, optional)*: Elasticsearch-compatible JSON Query DSL object (`{"bool": {"must": [...], "filter": [...]}}`).
+  * `from_date` *(string, optional)*: Filter on or after this date (`"2024-01-01"` or ISO-8601).
+  * `to_date` *(string, optional)*: Filter on or before this date (`"2024-06-30"` or ISO-8601).
+  * `sender` *(string, optional)*: Filter by sender name or ID.
   * `source` *(string, optional)*: Filter by source protocol (e.g. `"whatsapp"`).
   * `chat_id` *(string, optional)*: Restrict search to a specific conversation ID.
   * `has_media` *(boolean, optional)*: Filter messages that contain media attachments.
   * `media_type` *(string, optional)*: Filter by media type (`"image"`, `"audio"`, `"document"`, `"video"`).
   * `is_from_me` *(boolean, optional)*: `true` for outgoing, `false` for incoming.
+  * `metadata` *(object, optional)*: Key-value map of arbitrary metadata filters.
   * `limit` *(integer, optional)*: Maximum messages (default: 20, max: 100).
 
 #### `list_chats`
