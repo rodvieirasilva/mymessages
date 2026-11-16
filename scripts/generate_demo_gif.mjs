@@ -47,8 +47,24 @@ const server = http.createServer((req, res) => {
   const pathname = url.pathname;
 
   if (pathname === '/v1/chats') {
+    const rawQ = (url.searchParams.get('query') || '').toLowerCase().trim();
+    const source = url.searchParams.get('source');
+    let chats = SAMPLE_CHATS;
+    if (source) chats = chats.filter(c => c.source_id === source);
+    if (rawQ) {
+      const terms = rawQ.split(/\s+/).filter(t => !t.includes(':') && t.length > 0);
+      const searchTerm = terms[0] || rawQ;
+      const matchingChatIds = new Set(
+        ALL_MESSAGES.filter(m => m.text.toLowerCase().includes(searchTerm)).map(m => m.conversation_id)
+      );
+      chats = chats.filter(c =>
+        c.name.toLowerCase().includes(searchTerm) ||
+        c.remote_id.toLowerCase().includes(searchTerm) ||
+        matchingChatIds.has(c.id)
+      );
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify(SAMPLE_CHATS));
+    return res.end(JSON.stringify(chats));
   }
 
   if (pathname === '/v1/search' || pathname.startsWith('/v1/chats/')) {

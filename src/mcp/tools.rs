@@ -31,7 +31,8 @@ pub fn get_available_tools() -> Vec<McpTool> {
             input_schema: json!({
                 "type": "object",
                 "properties": {
-                    "source": { "type": "string", "description": "Optional source filter (e.g. 'whatsapp')" }
+                    "source": { "type": "string", "description": "Optional source filter (e.g. 'whatsapp')" },
+                    "query": { "type": "string", "description": "Optional query filter matching contact name, ID, or message text" }
                 }
             }),
         },
@@ -105,7 +106,8 @@ pub fn execute_tool(db: &Database, name: &str, args: &Value) -> McpCallToolResul
 
         "list_chats" => {
             let source = args.get("source").and_then(|s| s.as_str());
-            match list_chats(db.conn(), source) {
+            let query = args.get("query").and_then(|q| q.as_str());
+            match list_chats(db.conn(), source, query) {
                 Ok(chats) => {
                     let json_text = serde_json::to_string_pretty(&chats).unwrap_or_default();
                     McpCallToolResult::text(format!("Retrieved {} conversations:\n{}", chats.len(), json_text))

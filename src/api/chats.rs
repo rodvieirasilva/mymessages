@@ -16,6 +16,7 @@ pub struct ChatMessagesQuery {
 #[derive(Debug, Deserialize)]
 pub struct ChatsFilter {
     pub source: Option<String>,
+    pub query: Option<String>,
 }
 
 #[utoipa::path(
@@ -23,7 +24,8 @@ pub struct ChatsFilter {
     path = "/v1/chats",
     tag = "chats",
     params(
-        ("source" = Option<String>, Query, description = "Filter conversations by source ID (e.g. whatsapp)")
+        ("source" = Option<String>, Query, description = "Filter conversations by source ID (e.g. whatsapp)"),
+        ("query" = Option<String>, Query, description = "Filter conversations by name, remote ID, or message text")
     ),
     responses(
         (status = 200, description = "List of conversation summaries", body = Vec<ChatSummary>),
@@ -38,7 +40,11 @@ pub async fn list_chats_handler(
         (StatusCode::INTERNAL_SERVER_ERROR, format!("DB lock error: {}", e))
     })?;
 
-    let chats = list_chats(db.conn(), params.source.as_deref()).map_err(|e| {
+    let chats = list_chats(
+        db.conn(),
+        params.source.as_deref(),
+        params.query.as_deref(),
+    ).map_err(|e| {
         (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to list chats: {}", e))
     })?;
 
@@ -87,10 +93,21 @@ mod tests {
         let db = Database::in_memory().unwrap();
         let state = AppState::new(db, std::env::temp_dir(), AppConfig::default());
 
-        let resp_list = list_chats_handler(State(state.clone()), Query(ChatsFilter { source: None }))
-            .await
-            .unwrap();
+        let resp_list = list_chats_handler(
+            State(state.clone()),
+            Query(ChatsFilter { source: None, query: None }),
+        )
+        .await
+        .unwrap();
         assert_eq!(resp_list.into_response().status(), StatusCode::OK);
+
+        let resp_list_filter = list_chats_handler(
+            State(state.clone()),
+            Query(ChatsFilter { source: Some("whatsapp".into()), query: Some("test".into()) }),
+        )
+        .await
+        .unwrap();
+        assert_eq!(resp_list_filter.into_response().status(), StatusCode::OK);
 
         let resp_msgs = get_chat_messages_handler(
             State(state),

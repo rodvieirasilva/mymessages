@@ -281,7 +281,7 @@ async fn test_e2e_static_files_served_by_rust() {
     assert_eq!(resp_preset.status(), StatusCode::OK);
 
     // 5. Request versioned API routes (/v1 and /api/v1 aliases)
-    let req_v1 = Request::builder().uri("/v1/chats").body(Body::empty()).unwrap();
+    let req_v1 = Request::builder().uri("/v1/chats?source=whatsapp&query=Charlie").body(Body::empty()).unwrap();
     let resp_v1 = router.clone().oneshot(req_v1).await.unwrap();
     assert_eq!(resp_v1.status(), StatusCode::OK);
 

@@ -22,8 +22,12 @@ export async function searchMessages(filters: SearchFilters): Promise<SearchResu
   return res.json();
 }
 
-export async function fetchChats(source?: string): Promise<ChatSummary[]> {
-  const url = source ? `${BASE_URL}/chats?source=${encodeURIComponent(source)}` : `${BASE_URL}/chats`;
+export async function fetchChats(source?: string, query?: string): Promise<ChatSummary[]> {
+  const params = new URLSearchParams();
+  if (source) params.set('source', source);
+  if (query) params.set('query', query);
+  const qs = params.toString();
+  const url = qs ? `${BASE_URL}/chats?${qs}` : `${BASE_URL}/chats`;
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`Failed to fetch chats with status ${res.status}`);

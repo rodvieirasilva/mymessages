@@ -62,6 +62,14 @@ describe('api module', () => {
 
     await fetchChats('whatsapp');
     expect(globalThis.fetch).toHaveBeenCalledWith('/v1/chats?source=whatsapp');
+
+    (globalThis.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => [{ id: 'c1' }],
+    });
+
+    await fetchChats('whatsapp', 'Alice');
+    expect(globalThis.fetch).toHaveBeenCalledWith('/v1/chats?source=whatsapp&query=Alice');
   });
 
   it('fetches chat timeline messages', async () => {

@@ -34,7 +34,7 @@ async function init() {
     </header>
     <main class="app-main">
       <aside class="sidebar">
-        <div class="sidebar-header">Conversations</div>
+        <div class="sidebar-header" id="sidebarHeader" data-testid="sidebar-header">Conversations</div>
         <div id="chatListContainer" data-testid="chat-list-container">Loading chats...</div>
       </aside>
       <section class="content-area">
@@ -113,6 +113,7 @@ function renderFacets() {
     renderFacetBar(currentFilters, (updated) => {
       Object.assign(currentFilters, updated);
       renderFacets();
+      loadChats();
       runSearch();
     }),
   );
@@ -121,14 +122,19 @@ function renderFacets() {
 async function loadChats() {
   const container = document.getElementById('chatListContainer')!;
   try {
-    currentChats = await fetchChats();
+    const q = currentFilters.query.trim();
+    currentChats = await fetchChats(currentFilters.source, q || undefined);
     renderChats();
-  } catch (e) {
+  } catch {
     container.innerHTML = `<div class="error-state">Failed to load chats</div>`;
   }
 }
 
 function renderChats() {
+  const sidebarHeader = document.getElementById('sidebarHeader');
+  if (sidebarHeader) {
+    sidebarHeader.textContent = currentChats.length > 0 ? `Conversations (${currentChats.length})` : 'Conversations';
+  }
   const container = document.getElementById('chatListContainer')!;
   container.innerHTML = '';
   container.appendChild(
@@ -157,12 +163,15 @@ async function loadChatTimeline(chat: ChatSummary) {
     for (const msg of messages) {
       container.appendChild(renderMessage(msg));
     }
-  } catch (e) {
+  } catch {
     container.innerHTML = `<div class="error-state">Failed to load messages</div>`;
   }
 }
 
 async function runSearch() {
+  if (!currentFilters.chat_id) {
+    loadChats();
+  }
   const header = document.getElementById('contentHeader')!;
   const container = document.getElementById('messagesContainer')!;
   const q = currentFilters.query.trim();
@@ -179,7 +188,7 @@ async function runSearch() {
     for (const msg of results) {
       container.appendChild(renderMessage(msg));
     }
-  } catch (e) {
+  } catch {
     container.innerHTML = `<div class="error-state">Search error</div>`;
   }
 }

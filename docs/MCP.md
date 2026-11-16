@@ -30,6 +30,7 @@ Full-text search using SQLite FTS5, Lucene query syntax, or Elasticsearch-style 
 #### `list_chats`
 List conversations and group chats with message counts and last activity.
 - `source` *(string, optional)*: Filter by source (e.g. `"whatsapp"`).
+- `query` *(string, optional)*: Filter by contact name, phone/remote_id, or message text.
 
 #### `get_chat_history`
 Chronological message history for a given conversation.

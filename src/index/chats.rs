@@ -3,6 +3,8 @@ use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use crate::index::fts::{get_message_attachments, SearchResult};
+use crate::index::lucene::parse_lucene_string;
+use crate::index::query_dsl::CompiledQuery;
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ChatSummary {
@@ -16,7 +18,30 @@ pub struct ChatSummary {
     pub last_timestamp: Option<i64>,
 }
 
-pub fn list_chats(conn: &Connection, source_filter: Option<&str>) -> Result<Vec<ChatSummary>> {
+pub fn list_chats(
+    conn: &Connection,
+    source_filter: Option<&str>,
+    query_filter: Option<&str>,
+) -> Result<Vec<ChatSummary>> {
+    let clean_query = query_filter.unwrap_or("").trim();
+    let (effective_source, query_term) = if clean_query.is_empty() {
+        (source_filter.map(|s| s.to_string()), None)
+    } else {
+        let mut compiled = CompiledQuery::default();
+        parse_lucene_string(clean_query, &mut compiled);
+        let src = source_filter.map(|s| s.to_string()).or(compiled.source);
+        let term = if !compiled.text_terms.is_empty() {
+            Some(compiled.text_terms.join(" "))
+        } else if let Some(sender) = compiled.sender {
+            Some(sender)
+        } else if clean_query.contains(':') {
+            None
+        } else {
+            Some(clean_query.to_string())
+        };
+        (src, term)
+    };
+
     let sql = "
         SELECT 
             c.id, c.source_id, c.remote_id, c.name, c.is_group,
@@ -26,12 +51,22 @@ pub fn list_chats(conn: &Connection, source_filter: Option<&str>) -> Result<Vec<
         FROM conversations c
         LEFT JOIN messages m ON m.conversation_id = c.id
         WHERE (?1 IS NULL OR c.source_id = ?1)
+          AND (?2 IS NULL OR (
+              c.name LIKE '%' || ?2 || '%' 
+              OR c.remote_id LIKE '%' || ?2 || '%' 
+              OR c.id IN (
+                  SELECT DISTINCT m2.conversation_id 
+                  FROM messages m2 
+                  LEFT JOIN contacts ct ON ct.id = m2.sender_id 
+                  WHERE m2.body LIKE '%' || ?2 || '%' OR ct.display_name LIKE '%' || ?2 || '%'
+              )
+          ))
         GROUP BY c.id
         ORDER BY last_ts DESC NULLS LAST
     ";
 
     let mut stmt = conn.prepare(sql)?;
-    let rows = stmt.query_map([source_filter], |row| {
+    let rows = stmt.query_map([effective_source.as_deref(), query_term.as_deref()], |row| {
         Ok(ChatSummary {
             id: row.get(0)?,
             source_id: row.get(1)?,

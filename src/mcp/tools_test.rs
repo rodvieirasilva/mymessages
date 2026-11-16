@@ -72,6 +72,14 @@ fn test_execute_mcp_tools() {
     assert!(!res_chats.is_error);
     assert!(res_chats.content[0].text.contains("Retrieved 1 conversations"));
 
+    let res_chats_filter = execute_tool(&db, "list_chats", &json!({ "query": "Project" }));
+    assert!(!res_chats_filter.is_error);
+    assert!(res_chats_filter.content[0].text.contains("Retrieved 1 conversations"));
+
+    let res_chats_none = execute_tool(&db, "list_chats", &json!({ "query": "Nonexistent" }));
+    assert!(!res_chats_none.is_error);
+    assert!(res_chats_none.content[0].text.contains("Retrieved 0 conversations"));
+
     // 5. get_chat_history
     let res_hist = execute_tool(
         &db,
