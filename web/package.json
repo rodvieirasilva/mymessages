@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage --coverage.thresholds.lines=80",
-    "screenshot": "node ../scripts/capture_screenshot.mjs"
+    "screenshot": "node ../scripts/capture_screenshot.mjs",
+    "gif": "node ../scripts/generate_demo_gif.mjs"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^5.1.0",

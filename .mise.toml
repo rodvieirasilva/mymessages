@@ -58,6 +58,11 @@ description = "Capture and update WebUI screenshots (dark & light themes)"
 depends = ["web:build"]
 run = "node scripts/capture_screenshot.mjs"
 
+[tasks.gif]
+description = "Generate animated GIF demo of real-time search & filtering"
+depends = ["web:build"]
+run = "node scripts/generate_demo_gif.mjs"
+
 [tasks.dev]
 description = "Run development backend server"
 run = "cargo run -- serve"

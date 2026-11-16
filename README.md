@@ -113,7 +113,11 @@ mise run dev
 `mymessages` includes an embedded, high-performance web interface served at `http://localhost:8765/`:
 
 <p align="center">
-  <img src="docs/assets/screenshot.png" alt="mymessages Web Interface" width="95%" />
+  <img src="docs/assets/realtime-filter.gif" alt="mymessages Real-Time Filter & Search Demo" width="95%" />
+</p>
+
+<p align="center">
+  <em>Real-time search-as-you-type, Lucene field filters, facet pills, and instant dark/light theme switching.</em>
 </p>
 
 ### Mini Color & Theme Token System
@@ -127,14 +131,16 @@ The UI uses CSS custom property tokens for instant theme customization and switc
   - `--text-primary`, `--text-secondary`: High and medium contrast text.
   - `--border`, `--border-active`: Crisp layout dividers.
 
-### Updating WebUI Screenshots
-To re-render and capture updated screenshots of both dark and light modes:
+### Updating WebUI Screenshots & Demo GIF
+To re-render and capture updated screenshots or the animated demo GIF:
 ```bash
+# Capture dark and light PNG screenshots
 mise run screenshot
-# or
-npm --prefix web run screenshot
+
+# Generate optimized animated demo GIF
+mise run gif
 ```
-Screenshots are saved automatically to `docs/assets/screenshot-dark.png` and `docs/assets/screenshot-light.png`.
+Static screenshots are saved to `docs/assets/screenshot-dark.png` and `docs/assets/screenshot-light.png`, and the animated preview to `docs/assets/realtime-filter.gif`.
 
 ---
 

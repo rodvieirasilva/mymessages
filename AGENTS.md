@@ -59,6 +59,7 @@ mise run coverage    # Enforce >= 80% coverage on Rust & Web
 mise run e2e         # Run end-to-end integration tests
 mise run build       # Build web assets and release binary
 mise run screenshot  # Capture dark and light WebUI screenshots
+mise run gif         # Generate animated GIF of real-time search
 mise run dev         # Run development backend server
 mise run web:dev     # Run frontend Vite dev server
 ```

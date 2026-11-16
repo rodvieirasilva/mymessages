@@ -66,8 +66,21 @@ async function init() {
     runSearch();
   };
 
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  searchInput.oninput = () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      currentFilters.query = searchInput.value;
+      currentFilters.chat_id = undefined;
+      selectedChatId = null;
+      renderChats();
+      runSearch();
+    }, 200);
+  };
+
   searchInput.onkeydown = (e) => {
     if (e.key === 'Enter') {
+      if (debounceTimer) clearTimeout(debounceTimer);
       currentFilters.query = searchInput.value;
       currentFilters.chat_id = undefined;
       selectedChatId = null;
@@ -75,6 +88,18 @@ async function init() {
       runSearch();
     }
   };
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const qParam = urlParams.get('q') || urlParams.get('query');
+  if (qParam) {
+    searchInput.value = qParam;
+    currentFilters.query = qParam;
+  }
+  const mediaParam = urlParams.get('media_type');
+  if (mediaParam) {
+    currentFilters.media_type = mediaParam;
+    currentFilters.has_media = true;
+  }
 
   renderFacets();
   await loadChats();
