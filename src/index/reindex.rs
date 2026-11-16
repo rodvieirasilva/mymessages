@@ -8,7 +8,7 @@ use crate::adapters::FolderAdapter;
 use crate::index::hasher::is_hash_indexed;
 use crate::index::writer::index_message;
 use crate::models::{CanonicalMessage, CanonicalParticipant};
-use crate::storage::{build_eml, MaildirStorage};
+use crate::storage::StoragePipeline;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReindexSource {
@@ -31,21 +31,20 @@ pub struct ReindexReport {
 
 pub fn reindex_from_maildir(
     conn: &mut Connection,
-    data_dir: &Path,
+    mail_dir: &Path,
 ) -> Result<ReindexReport> {
-    let mail_root = data_dir.join("mail");
     let mut report = ReindexReport {
         total_found: 0,
         newly_indexed: 0,
         duplicates_skipped: 0,
     };
 
-    if !mail_root.exists() {
+    if !mail_dir.exists() {
         return Ok(report);
     }
 
     let mut eml_files = Vec::new();
-    find_eml_files(&mail_root, &mut eml_files)?;
+    find_eml_files(mail_dir, &mut eml_files)?;
     report.total_found = eml_files.len();
 
     for eml_path in eml_files {
@@ -57,7 +56,7 @@ pub fn reindex_from_maildir(
                 continue;
             }
 
-            let rel_path = eml_path.strip_prefix(data_dir).unwrap_or(&eml_path);
+            let rel_path = eml_path.strip_prefix(mail_dir).unwrap_or(&eml_path);
             index_message(conn, &msg, &hash, &rel_path.to_string_lossy())?;
             report.newly_indexed += 1;
         }
@@ -67,11 +66,8 @@ pub fn reindex_from_maildir(
 }
 
 pub fn reindex_from_folder(
-    conn: &mut Connection,
-    storage: &MaildirStorage,
+    pipeline: &StoragePipeline,
     folder: &Path,
-    enable_maildir: bool,
-    enable_db: bool,
 ) -> Result<ReindexReport> {
     let adapter = FolderAdapter::new(folder);
     let messages = adapter.read_all_messages()?;
@@ -83,29 +79,12 @@ pub fn reindex_from_folder(
 
     for msg in messages {
         let hash = msg.compute_content_hash();
-        if enable_db && is_hash_indexed(conn, &hash)? {
+        let res = pipeline.write_all(&msg, &hash)?;
+        if res.db_indexed || res.eml_path.is_some() {
+            report.newly_indexed += 1;
+        } else {
             report.duplicates_skipped += 1;
-            continue;
         }
-
-        let mut rel_path_str = String::new();
-        if enable_maildir {
-            let eml_content = build_eml(&msg, &hash);
-            let p = storage.write_message(
-                &msg.source,
-                &msg.conversation_id,
-                &msg.id,
-                msg.timestamp.timestamp(),
-                &hash,
-                &eml_content,
-            )?;
-            rel_path_str = p.to_string_lossy().to_string();
-        }
-
-        if enable_db {
-            index_message(conn, &msg, &hash, &rel_path_str)?;
-        }
-        report.newly_indexed += 1;
     }
 
     Ok(report)
@@ -207,24 +186,30 @@ fn extract_eml_body(eml: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::{Arc, Mutex};
+    use crate::config::AppConfig;
     use crate::index::Database;
+    use crate::storage::MaildirStorage;
 
     #[test]
     fn test_reindex_from_folder_and_maildir() {
-        let temp_dir = std::env::temp_dir().join(format!("test_reindex_{}", std::process::id()));
+        let temp_dir = std::env::temp_dir().join(format!("test_reindex_pipe_{}", std::process::id()));
         let _ = fs::remove_dir_all(&temp_dir);
         fs::create_dir_all(&temp_dir).unwrap();
 
-        let mut db = Database::in_memory().unwrap();
-        let storage = MaildirStorage::new(&temp_dir);
+        let db = Arc::new(Mutex::new(Database::in_memory().unwrap()));
+        let storage = Arc::new(MaildirStorage::new(&temp_dir));
+        let mut cfg = AppConfig::default();
+        cfg.storages = vec![
+            crate::config::StorageEntry::new_maildir("maildir", &temp_dir),
+            crate::config::StorageEntry::new_sqlite("sqlite", ":memory:"),
+        ];
+        let pipeline = StoragePipeline::from_config(&cfg, db.clone(), storage);
 
-        // 1. Ingest from test_messages folder
+        // 1. Ingest from test_messages folder via pipeline
         let report = reindex_from_folder(
-            db.conn_mut(),
-            &storage,
+            &pipeline,
             Path::new("./test_messages"),
-            true,
-            true,
         ).unwrap();
 
         assert!(report.total_found >= 4);

@@ -38,11 +38,15 @@ pub async fn get_attachment_handler(
         .map_err(|_| (StatusCode::NOT_FOUND, "Attachment not found".into()))?
     };
 
-    let full_eml_path = state.data_dir.join(&eml_rel_path);
+    let full_eml_path = if state.storage.root_dir.join(&eml_rel_path).exists() {
+        state.storage.root_dir.join(&eml_rel_path)
+    } else {
+        state.data_dir.join(&eml_rel_path)
+    };
     let eml_content = fs::read_to_string(&full_eml_path).map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to read EML: {}", e),
+            format!("Failed to read EML at {:?}: {}", full_eml_path, e),
         )
     })?;
 

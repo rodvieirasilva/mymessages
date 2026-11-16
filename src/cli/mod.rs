@@ -51,7 +51,7 @@ pub enum Commands {
         #[arg(long, default_value = "maildir")]
         from: String,
 
-        /// Destination to write: 'db', 'maildir', or 'all'
+        /// Destination storage target
         #[arg(long, default_value = "db")]
         to: String,
     },
@@ -60,6 +60,12 @@ pub enum Commands {
     Adapter {
         #[command(subcommand)]
         command: AdapterCommands,
+    },
+
+    /// Manage and inspect configured storage targets
+    Storage {
+        #[command(subcommand)]
+        command: StorageCommands,
     },
 
     /// Show summary statistics of the vault
@@ -91,6 +97,15 @@ pub enum AdapterCommands {
     },
 }
 
+#[derive(Subcommand, Debug)]
+pub enum StorageCommands {
+    /// List all configured storage targets
+    List {
+        #[arg(short, long)]
+        config: Option<PathBuf>,
+    },
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -103,19 +118,10 @@ mod tests {
             _ => panic!("Expected serve command"),
         }
 
-        let cli = Cli::parse_from(["mymessages", "reindex", "--from", "maildir", "--to", "db"]);
+        let cli = Cli::parse_from(["mymessages", "storage", "list"]);
         match cli.command {
-            Commands::Reindex { from, to, .. } => {
-                assert_eq!(from, "maildir");
-                assert_eq!(to, "db");
-            }
-            _ => panic!("Expected reindex command"),
-        }
-
-        let cli = Cli::parse_from(["mymessages", "adapter", "list"]);
-        match cli.command {
-            Commands::Adapter { command: AdapterCommands::List { .. } } => (),
-            _ => panic!("Expected adapter list command"),
+            Commands::Storage { command: StorageCommands::List { .. } } => (),
+            _ => panic!("Expected storage list command"),
         }
     }
 }

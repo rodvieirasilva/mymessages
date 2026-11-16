@@ -23,18 +23,37 @@ impl Default for ServerConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct StorageConfig {
-    pub data_dir: PathBuf,
-    pub enable_maildir: bool,
-    pub enable_db: bool,
+#[serde(rename_all = "lowercase")]
+pub enum StorageType {
+    Maildir,
+    Sqlite,
 }
 
-impl Default for StorageConfig {
-    fn default() -> Self {
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct StorageEntry {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub storage_type: StorageType,
+    pub enabled: bool,
+    pub path: PathBuf,
+}
+
+impl StorageEntry {
+    pub fn new_maildir<P: Into<PathBuf>>(name: &str, path: P) -> Self {
         Self {
-            data_dir: "./data".into(),
-            enable_maildir: true,
-            enable_db: true,
+            name: name.into(),
+            storage_type: StorageType::Maildir,
+            enabled: true,
+            path: path.into(),
+        }
+    }
+
+    pub fn new_sqlite<P: Into<PathBuf>>(name: &str, path: P) -> Self {
+        Self {
+            name: name.into(),
+            storage_type: StorageType::Sqlite,
+            enabled: true,
+            path: path.into(),
         }
     }
 }
@@ -77,14 +96,39 @@ pub struct AdaptersConfig {
     pub folder: Option<FolderAdapterConfig>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AppConfig {
     pub server: ServerConfig,
-    pub storage: StorageConfig,
+    pub storages: Vec<StorageEntry>,
     pub adapters: AdaptersConfig,
 }
 
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            server: ServerConfig::default(),
+            storages: vec![
+                StorageEntry::new_maildir("maildir", "./data/mail"),
+                StorageEntry::new_sqlite("sqlite", "./data/messages.sqlite3"),
+            ],
+            adapters: AdaptersConfig::default(),
+        }
+    }
+}
+
 impl AppConfig {
+    pub fn get_storage(&self, name: &str) -> Option<&StorageEntry> {
+        self.storages.iter().find(|s| s.name == name)
+    }
+
+    pub fn is_storage_enabled(&self, name: &str) -> bool {
+        self.get_storage(name).map(|s| s.enabled).unwrap_or(false)
+    }
+
+    pub fn get_storage_path(&self, name: &str) -> Option<PathBuf> {
+        self.get_storage(name).map(|s| s.path.clone())
+    }
+
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let content = fs::read_to_string(path.as_ref())
             .with_context(|| format!("Failed to read config file {:?}", path.as_ref()))?;
@@ -124,15 +168,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_config_defaults_and_serialization() {
+    fn test_config_storage_list() {
         let cfg = AppConfig::default();
-        assert_eq!(cfg.server.port, 8090);
-        assert!(cfg.storage.enable_maildir);
-        assert!(cfg.storage.enable_db);
+        assert_eq!(cfg.storages.len(), 2);
+        assert!(cfg.is_storage_enabled("maildir"));
+        assert!(cfg.is_storage_enabled("sqlite"));
+
+        let maildir_path = cfg.get_storage_path("maildir");
+        assert_eq!(maildir_path, Some(PathBuf::from("./data/mail")));
 
         let toml_str = toml::to_string_pretty(&cfg).unwrap();
-        assert!(toml_str.contains("[server]"));
-        assert!(toml_str.contains("cors_allowed_origins"));
+        assert!(toml_str.contains("[[storages]]"));
+        assert!(toml_str.contains("name = \"maildir\""));
 
         let parsed: AppConfig = toml::from_str(&toml_str).unwrap();
         assert_eq!(cfg, parsed);
@@ -140,13 +187,19 @@ mod tests {
 
     #[test]
     fn test_config_save_and_load() {
-        let temp_file = std::env::temp_dir().join(format!("test_cfg_{}.toml", std::process::id()));
+        let temp_file = std::env::temp_dir().join(format!("test_cfg_list_{}.toml", std::process::id()));
         let mut cfg = AppConfig::default();
-        cfg.server.port = 9999;
+        cfg.storages.push(StorageEntry {
+            name: "backup_maildir".into(),
+            storage_type: StorageType::Maildir,
+            enabled: false,
+            path: "./backup/mail".into(),
+        });
         cfg.save_to_file(&temp_file).unwrap();
 
         let loaded = AppConfig::load_from_file(&temp_file).unwrap();
-        assert_eq!(loaded.server.port, 9999);
+        assert_eq!(loaded.storages.len(), 3);
+        assert!(!loaded.is_storage_enabled("backup_maildir"));
 
         let _ = fs::remove_file(temp_file);
     }

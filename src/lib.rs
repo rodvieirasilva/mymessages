@@ -8,16 +8,17 @@ pub mod storage;
 
 use std::fs;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use anyhow::{Context, Result};
 use clap::Parser;
 use tracing::info;
 
 use crate::api::create_router;
 use crate::api::state::AppState;
-use crate::cli::{AdapterCommands, Cli, Commands};
+use crate::cli::{AdapterCommands, Cli, Commands, StorageCommands};
 use crate::config::AppConfig;
 use crate::index::{reindex_from_folder, reindex_from_maildir, search_messages, Database, SearchQuery};
-use crate::storage::MaildirStorage;
+use crate::storage::{MaildirStorage, StoragePipeline};
 
 pub async fn run_app() -> Result<()> {
     tracing_subscriber::fmt()
@@ -33,19 +34,20 @@ pub async fn run_app() -> Result<()> {
         Commands::Serve { config, port, data_dir } => {
             let mut cfg = AppConfig::load_or_default(config.as_deref());
             if let Some(p) = port { cfg.server.port = p; }
-            if let Some(d) = data_dir { cfg.storage.data_dir = d; }
+            let base_data_dir = data_dir.unwrap_or_else(|| PathBuf::from("./data"));
 
-            fs::create_dir_all(&cfg.storage.data_dir)
-                .with_context(|| format!("Failed to create data dir {:?}", cfg.storage.data_dir))?;
+            fs::create_dir_all(&base_data_dir)
+                .with_context(|| format!("Failed to create data dir {:?}", base_data_dir))?;
 
-            let db_path = cfg.storage.data_dir.join("messages.sqlite3");
+            let db_path = cfg.get_storage_path("sqlite")
+                .unwrap_or_else(|| base_data_dir.join("messages.sqlite3"));
             let db = Database::open(&db_path)?;
             let static_opt = cfg.server.static_dir.clone().filter(|p| p.exists());
 
             let addr = format!("{}:{}", cfg.server.host, cfg.server.port);
             info!("Starting mymessages server on http://{}", addr);
 
-            let state = AppState::new(db, cfg.storage.data_dir.clone(), cfg);
+            let state = AppState::new(db, base_data_dir, cfg);
             let app = create_router(state, static_opt);
 
             let listener = tokio::net::TcpListener::bind(&addr).await?;
@@ -54,7 +56,8 @@ pub async fn run_app() -> Result<()> {
 
         Commands::Search { query, config, source, chat, has_media, limit } => {
             let cfg = AppConfig::load_or_default(config.as_deref());
-            let db_path = cfg.storage.data_dir.join("messages.sqlite3");
+            let db_path = cfg.get_storage_path("sqlite")
+                .unwrap_or_else(|| PathBuf::from("./data/messages.sqlite3"));
             if !db_path.exists() {
                 println!("No database found at {:?}", db_path);
                 return Ok(());
@@ -90,20 +93,25 @@ pub async fn run_app() -> Result<()> {
 
         Commands::Reindex { config, from, to } => {
             let cfg = AppConfig::load_or_default(config.as_deref());
-            fs::create_dir_all(&cfg.storage.data_dir)?;
-            let db_path = cfg.storage.data_dir.join("messages.sqlite3");
-            let mut db = Database::open(&db_path)?;
-            let storage = MaildirStorage::new(&cfg.storage.data_dir);
+            let base_data_dir = PathBuf::from("./data");
+            fs::create_dir_all(&base_data_dir)?;
 
+            let db_path = cfg.get_storage_path("sqlite")
+                .unwrap_or_else(|| base_data_dir.join("messages.sqlite3"));
+            let mail_path = cfg.get_storage_path("maildir")
+                .unwrap_or_else(|| base_data_dir.join("mail"));
+
+            let mut db = Database::open(&db_path)?;
             println!("Starting reindex from '{}' to '{}'...", from, to);
-            let enable_maildir = to == "maildir" || to == "all" || cfg.storage.enable_maildir;
-            let enable_db = to == "db" || to == "all" || cfg.storage.enable_db;
 
             let report = if from == "maildir" {
-                reindex_from_maildir(db.conn_mut(), &cfg.storage.data_dir)?
+                reindex_from_maildir(db.conn_mut(), &mail_path)?
             } else {
                 let path = PathBuf::from(&from);
-                reindex_from_folder(db.conn_mut(), &storage, &path, enable_maildir, enable_db)?
+                let db_arc = Arc::new(Mutex::new(db));
+                let storage_arc = Arc::new(MaildirStorage::new(&mail_path));
+                let pipeline = StoragePipeline::from_config(&cfg, db_arc, storage_arc);
+                reindex_from_folder(&pipeline, &path)?
             };
 
             println!("=== Reindex Complete ===");
@@ -128,32 +136,43 @@ pub async fn run_app() -> Result<()> {
             }
             AdapterCommands::Run { name, config, path } => {
                 let cfg = AppConfig::load_or_default(config.as_deref());
-                fs::create_dir_all(&cfg.storage.data_dir)?;
-                let db_path = cfg.storage.data_dir.join("messages.sqlite3");
-                let mut db = Database::open(&db_path)?;
-                let storage = MaildirStorage::new(&cfg.storage.data_dir);
+                let base_data_dir = PathBuf::from("./data");
+                fs::create_dir_all(&base_data_dir)?;
+                let db_path = cfg.get_storage_path("sqlite").unwrap_or_else(|| base_data_dir.join("messages.sqlite3"));
+                let mail_path = cfg.get_storage_path("maildir").unwrap_or_else(|| base_data_dir.join("mail"));
+
+                let db = Database::open(&db_path)?;
+                let db_arc = Arc::new(Mutex::new(db));
+                let storage_arc = Arc::new(MaildirStorage::new(&mail_path));
+                let pipeline = StoragePipeline::from_config(&cfg, db_arc, storage_arc);
 
                 if name == "folder" {
                     let folder_path = path.or_else(|| cfg.adapters.folder.as_ref().map(|f| f.folder_path.clone()))
                         .unwrap_or_else(|| PathBuf::from("./test_messages"));
                     println!("Running folder adapter on {:?}...", folder_path);
-                    let report = reindex_from_folder(
-                        db.conn_mut(),
-                        &storage,
-                        &folder_path,
-                        cfg.storage.enable_maildir,
-                        cfg.storage.enable_db,
-                    )?;
-                    println!("Ingested {} messages ({} duplicates skipped).", report.newly_indexed, report.duplicates_skipped);
+                    let report = reindex_from_folder(&pipeline, &folder_path)?;
+                    println!("Ingested {} messages ({} skipped).", report.newly_indexed, report.duplicates_skipped);
                 } else {
-                    println!("Adapter '{}' is an event-driven webhook adapter. Start the daemon with 'serve' to receive webhooks.", name);
+                    println!("Adapter '{}' is an event-driven webhook adapter. Start with 'serve' to receive webhooks.", name);
+                }
+            }
+        },
+
+        Commands::Storage { command } => match command {
+            StorageCommands::List { config } => {
+                let cfg = AppConfig::load_or_default(config.as_deref());
+                println!("=== Configured Storage Sinks ===");
+                for (idx, entry) in cfg.storages.iter().enumerate() {
+                    println!("{}. Name: '{}' (Type: {:?})", idx + 1, entry.name, entry.storage_type);
+                    println!("   - Enabled: {}", entry.enabled);
+                    println!("   - Path:    {:?}", entry.path);
                 }
             }
         },
 
         Commands::Stats { config } => {
             let cfg = AppConfig::load_or_default(config.as_deref());
-            let db_path = cfg.storage.data_dir.join("messages.sqlite3");
+            let db_path = cfg.get_storage_path("sqlite").unwrap_or_else(|| PathBuf::from("./data/messages.sqlite3"));
             if !db_path.exists() {
                 println!("No database found at {:?}", db_path);
                 return Ok(());

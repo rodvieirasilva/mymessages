@@ -5,6 +5,8 @@
 # Node / Web
 web/node_modules/
 web/dist/
+web/coverage/
+coverage/
 web/.eslintcache
 
 # Local data & archives

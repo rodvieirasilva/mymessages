@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 
 pub struct MaildirStorage {
-    root_dir: PathBuf,
+    pub root_dir: PathBuf,
 }
 
 impl MaildirStorage {
@@ -22,7 +22,11 @@ impl MaildirStorage {
     pub fn get_chat_dir(&self, source: &str, chat_id: &str) -> PathBuf {
         let clean_source = Self::sanitize_name(source);
         let clean_chat = Self::sanitize_name(chat_id);
-        self.root_dir.join("mail").join(clean_source).join(clean_chat)
+        if self.root_dir.ends_with("mail") {
+            self.root_dir.join(clean_source).join(clean_chat)
+        } else {
+            self.root_dir.join("mail").join(clean_source).join(clean_chat)
+        }
     }
 
     pub fn init_chat_folders(&self, source: &str, chat_id: &str) -> Result<PathBuf> {
@@ -58,9 +62,15 @@ impl MaildirStorage {
         fs::rename(&tmp_path, &cur_path)
             .with_context(|| format!("Failed to move EML to {:?}", cur_path))?;
 
-        // Return path relative to root_dir
+        // Return path relative to base directory
+        let base_dir = if self.root_dir.ends_with("mail") {
+            self.root_dir.parent().unwrap_or(&self.root_dir)
+        } else {
+            &self.root_dir
+        };
+
         cur_path
-            .strip_prefix(&self.root_dir)
+            .strip_prefix(base_dir)
             .map(|p| p.to_path_buf())
             .with_context(|| "Failed to strip prefix from eml path")
     }

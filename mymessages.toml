@@ -6,11 +6,20 @@ port = 8090
 static_dir = "./web/dist"
 cors_allowed_origins = ["*"]
 
-[storage]
-data_dir = "./data"
-enable_maildir = true
-enable_db = true
+# Modular list of storage targets
+[[storages]]
+name = "maildir"
+type = "maildir"
+enabled = true
+path = "./data/mail"
 
+[[storages]]
+name = "sqlite"
+type = "sqlite"
+enabled = true
+path = "./data/messages.sqlite3"
+
+# Ingestion Adapters
 [adapters.evolution]
 enabled = true
 webhook_path = "/api/v1/webhook/evolution"

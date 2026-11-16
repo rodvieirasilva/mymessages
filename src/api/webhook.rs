@@ -7,8 +7,7 @@ use serde_json::Value;
 use crate::adapters::evolution::EvolutionApiAdapter;
 use crate::adapters::SourceAdapter;
 use crate::api::state::AppState;
-use crate::index::{index_message, is_hash_indexed};
-use crate::storage::build_eml;
+use crate::index::is_hash_indexed;
 
 pub async fn evolution_webhook_handler(
     State(state): State<AppState>,
@@ -29,7 +28,7 @@ pub async fn evolution_webhook_handler(
     let content_hash = msg.compute_content_hash();
 
     // Check deduplication
-    if state.config.storage.enable_db {
+    if state.config.is_storage_enabled("sqlite") {
         let db = state.db.lock().map_err(|e| {
             (StatusCode::INTERNAL_SERVER_ERROR, format!("DB lock error: {}", e))
         })?;
@@ -42,52 +41,21 @@ pub async fn evolution_webhook_handler(
         }
     }
 
-    // Write to Maildir (if enabled)
-    let mut rel_path_str = String::new();
-    if state.config.storage.enable_maildir {
-        let eml_content = build_eml(&msg, &content_hash);
-        let rel_path = state
-            .storage
-            .write_message(
-                &msg.source,
-                &msg.conversation_id,
-                &msg.id,
-                msg.timestamp.timestamp(),
-                &content_hash,
-                &eml_content,
-            )
-            .map_err(|e| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to write EML: {}", e),
-                )
-            })?;
-        rel_path_str = rel_path.to_string_lossy().to_string();
-    }
-
-    // Index to SQLite (if enabled)
-    if state.config.storage.enable_db {
-        let mut db = state.db.lock().map_err(|e| {
-            (StatusCode::INTERNAL_SERVER_ERROR, format!("DB lock error: {}", e))
-        })?;
-        index_message(
-            db.conn_mut(),
-            &msg,
-            &content_hash,
-            &rel_path_str,
-        )
+    // Dispatch to modular storage pipeline
+    let report = state
+        .pipeline
+        .write_all(&msg, &content_hash)
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to index message: {}", e),
+                format!("Storage pipeline error: {}", e),
             )
         })?;
-    }
 
     Ok(Json(serde_json::json!({
         "status": "indexed",
         "message_id": msg.id,
         "content_hash": content_hash,
-        "eml_path": rel_path_str
+        "eml_path": report.eml_path.unwrap_or_default()
     })))
 }

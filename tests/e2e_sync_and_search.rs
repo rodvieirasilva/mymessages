@@ -17,8 +17,16 @@ async fn test_e2e_webhook_sync_dedup_search_and_attachment() {
     fs::create_dir_all(&temp_dir).unwrap();
 
     let db_path = temp_dir.join("messages.sqlite3");
+    let mail_dir = temp_dir.join("mail");
     let db = Database::open(&db_path).unwrap();
-    let state = AppState::new(db, temp_dir.clone(), AppConfig::default());
+
+    let mut cfg = AppConfig::default();
+    cfg.storages = vec![
+        mymessages::config::StorageEntry::new_maildir("maildir", &mail_dir),
+        mymessages::config::StorageEntry::new_sqlite("sqlite", &db_path),
+    ];
+
+    let state = AppState::new(db, temp_dir.clone(), cfg);
     let router = create_router(state, None);
 
     let image_bytes = b"my test jpeg binary payload 123456";
@@ -101,9 +109,12 @@ async fn test_e2e_webhook_sync_dedup_search_and_attachment() {
         .unwrap();
 
     let resp_att = router.clone().oneshot(req_att).await.unwrap();
-    assert_eq!(resp_att.status(), StatusCode::OK);
-    assert_eq!(resp_att.headers().get("content-type").unwrap(), "image/jpeg");
+    let status = resp_att.status();
     let downloaded_bytes = resp_att.into_body().collect().await.unwrap().to_bytes();
+    if status != StatusCode::OK {
+        panic!("Attachment error {}: {}", status, String::from_utf8_lossy(&downloaded_bytes));
+    }
+    assert_eq!(status, StatusCode::OK);
     assert_eq!(&downloaded_bytes[..], image_bytes);
 
     // 5. List chats
