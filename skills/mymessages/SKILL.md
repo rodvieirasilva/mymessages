@@ -206,3 +206,23 @@ curl -s "http://localhost:8765/v1/attachments/att_456" -o contract.pdf
 ### Workflow 3: Browsing Recent Activity
 1. List chats via `GET /v1/chats` to view active contacts, groups, and message counts.
 2. Select a target conversation and inspect its recent timeline via `GET /v1/chats/{id}/messages`.
+
+---
+
+## Installing the Skill in Antigravity (`agy`)
+
+### Option 1: Global Installation (All Projects)
+Install globally in `~/.gemini/config/skills/`:
+```bash
+mkdir -p ~/.gemini/config/skills/mymessages
+cp skills/mymessages/SKILL.md ~/.gemini/config/skills/mymessages/
+```
+
+### Option 2: Project Installation
+Install in the project's `.agents/skills/`:
+```bash
+mkdir -p .agents/skills/mymessages
+cp skills/mymessages/SKILL.md .agents/skills/mymessages/
+```
+
+Once installed, `agy` discovers the skill and queries `mymessages search` or the `/v1/*` HTTP API when answering questions about stored messages.

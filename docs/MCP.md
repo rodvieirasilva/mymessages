@@ -76,7 +76,19 @@ In `stdio` mode, the client launches `mymessages mcp` as a subprocess.
 claude mcp add --transport stdio mymessages -- mymessages mcp --config ./mymessages.toml
 ```
 
-### Goose / Cline / Antigravity
+### Antigravity / `agy` (`~/.gemini/config/mcp_config.json`)
+```json
+{
+  "mcpServers": {
+    "mymessages": {
+      "command": "mymessages",
+      "args": ["mcp", "--config", "./mymessages.toml"]
+    }
+  }
+}
+```
+
+### Goose / Cline
 Configure an MCP stdio server with:
 - **Executable**: `mymessages` (or `/usr/local/bin/mymessages`)
 - **Arguments**: `["mcp", "--config", "./mymessages.toml"]`
@@ -95,6 +107,17 @@ mymessages serve --port 8765
 ### Claude Code CLI
 ```bash
 claude mcp add --transport http mymessages http://localhost:8765/v1/mcp
+```
+
+### Antigravity / `agy` (`~/.gemini/config/mcp_config.json`)
+```json
+{
+  "mcpServers": {
+    "mymessages": {
+      "url": "http://localhost:8765/v1/mcp"
+    }
+  }
+}
 ```
 
 ### Claude Desktop via HTTP Bridge (`mcp-remote`)

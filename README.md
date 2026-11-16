@@ -148,12 +148,16 @@ file_pattern = "*.json"
 
 AI assistants and LLM agents can connect to `mymessages` using either **Model Context Protocol (MCP)** or an **Agent Skill (CLI & HTTP)**:
 
-### Option 1: Native Read-Only MCP Server (`stdio`)
-For environments supporting MCP (Claude Desktop, Claude Code, Cursor, Goose, Antigravity):
+### Option 1: Native Read-Only MCP Server (`stdio` & `http`)
+For environments supporting MCP (Claude Desktop, Claude Code, Cursor, Antigravity / `agy`, Goose):
 ```bash
+# stdio mode (local subprocess)
 mymessages mcp
+
+# http mode (service on port 8765)
+mymessages serve
 ```
-See [docs/MCP.md](docs/MCP.md) for tool signatures (`search_messages`, `list_chats`, `get_chat_history`, `get_attachment_info`) and client setup.
+See [docs/MCP.md](docs/MCP.md) for tool signatures, `stdio` configs, and `http` endpoint setup.
 
 ### Option 2: Query Skill (CLI & HTTP REST)
 For agents operating via terminal commands or REST HTTP calls:

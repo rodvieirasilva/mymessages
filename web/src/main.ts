@@ -18,7 +18,7 @@ async function init() {
         <span class="version-badge">v0.1.0</span>
       </div>
       <div class="search-bar-container">
-        <input type="text" id="searchInput" placeholder="Search all messages, senders, files..." />
+        <input type="text" id="searchInput" placeholder="Search text or Lucene (e.g. from:Alice after:2024-01-01)..." />
         <button id="searchBtn">Search</button>
       </div>
       <div class="header-actions">
