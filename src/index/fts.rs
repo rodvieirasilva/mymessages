@@ -1,8 +1,9 @@
 use anyhow::{Context, Result};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, ToSchema)]
 pub struct SearchQuery {
     pub query: String,
     pub source: Option<String>,
@@ -13,7 +14,7 @@ pub struct SearchQuery {
     pub offset: Option<usize>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AttachmentInfo {
     pub id: String,
     pub filename: Option<String>,
@@ -22,7 +23,7 @@ pub struct AttachmentInfo {
     pub media_type: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct SearchResult {
     pub id: String,
     pub source: String,
@@ -38,7 +39,7 @@ pub struct SearchResult {
     pub attachments: Vec<AttachmentInfo>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ChatSummary {
     pub id: String,
     pub source_id: String,

@@ -7,23 +7,31 @@ COPY web/ ./
 RUN npm run build
 
 # Stage 2: Build Rust Backend
-FROM rust:1.99-bookworm AS rust-builder
+FROM rust:1.99-alpine AS rust-builder
+RUN apk add --no-cache musl-dev gcc make
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY src/ ./src/
 RUN cargo build --release
 
-# Stage 3: Runtime Image
-FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    libsqlite3-0 \
-    && rm -rf /var/lib/apt/lists/*
+# Stage 3: Ultra-Minimal Alpine Runtime Image
+FROM alpine:3.21
+RUN apk add --no-cache ca-certificates tzdata
+
+# Create dedicated unprivileged non-root user and group
+RUN addgroup -g 10001 -S mymessages && \
+    adduser -u 10001 -S mymessages -G mymessages -h /app -s /sbin/nologin
 
 WORKDIR /app
-COPY --from=rust-builder /app/target/release/mymessages /usr/local/bin/mymessages
-COPY --from=web-builder /app/web/dist /app/web/dist
-COPY mymessages.toml /app/mymessages.toml
+COPY --from=rust-builder --chown=mymessages:mymessages /app/target/release/mymessages /usr/local/bin/mymessages
+COPY --from=web-builder --chown=mymessages:mymessages /app/web/dist /app/web/dist
+COPY --chown=mymessages:mymessages mymessages.toml /app/mymessages.toml
+
+# Pre-create data directory with non-root ownership
+RUN mkdir -p /data && chown -R mymessages:mymessages /data /app
+
+# Run as non-root
+USER 10001:10001
 
 ENV MYMESSAGES_DATA_DIR=/data
 ENV MYMESSAGES_PORT=8765

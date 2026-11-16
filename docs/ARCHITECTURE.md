@@ -370,6 +370,7 @@ services:
     build: .
     container_name: mymessages
     restart: always
+    user: "10001:10001"            # Run unprivileged as non-root
     ports:
       - "8765:8765"
     environment:
@@ -392,7 +393,9 @@ volumes:
 To provide a seamless search and media viewing experience, `mymessages` includes a lightweight, modern web interface built with **TypeScript** and **Vite**, backed by the Rust backend's REST API.
 
 ### REST API Endpoints
-- `GET /api/v1/search?q={query}&source={source}&chat={chat}&has_media={bool}&limit={n}&offset={n}`: Full-text search with highlighted snippets and BM25 relevance ranking.
+- `GET /swagger-ui/`: Interactive Swagger UI documentation with live endpoint testing.
+- `GET /api-docs/openapi.json`: OpenAPI 3.1 JSON specification.
+- `GET /api/v1/search?query={query}&source={source}&chat_id={chat}&has_media={bool}&limit={n}&offset={n}`: Full-text search with highlighted snippets and BM25 relevance ranking.
 - `GET /api/v1/chats`: List all conversations with contact names, avatars, last message timestamp, and message counts.
 - `GET /api/v1/chats/:id/messages?limit={n}&before={timestamp}`: Paginated chat timeline view.
 - `GET /api/v1/messages/:id`: Message metadata, full headers, and attachment manifest.

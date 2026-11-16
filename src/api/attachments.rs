@@ -8,6 +8,19 @@ use std::fs;
 
 use crate::api::state::AppState;
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/attachments/{id}",
+    tag = "attachments",
+    params(
+        ("id" = String, Path, description = "Unique attachment identifier"),
+    ),
+    responses(
+        (status = 200, description = "Streamed binary attachment content", content_type = "application/octet-stream"),
+        (status = 404, description = "Attachment or EML file not found"),
+        (status = 500, description = "Internal error extracting attachment")
+    )
+)]
 pub async fn get_attachment_handler(
     State(state): State<AppState>,
     Path(att_id): Path<String>,

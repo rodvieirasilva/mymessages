@@ -36,6 +36,7 @@ services:
       dockerfile: Dockerfile
     container_name: mymessages
     restart: always
+    user: "10001:10001"
     ports:
       - "8765:8765"
     environment:

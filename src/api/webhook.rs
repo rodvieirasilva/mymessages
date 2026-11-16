@@ -2,13 +2,35 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
+use serde::Serialize;
 use serde_json::Value;
+use utoipa::ToSchema;
 
 use crate::adapters::evolution::EvolutionApiAdapter;
 use crate::adapters::SourceAdapter;
 use crate::api::state::AppState;
 use crate::index::is_hash_indexed;
 
+#[derive(Debug, Serialize, ToSchema)]
+pub struct WebhookResult {
+    pub status: String,
+    pub message_id: Option<String>,
+    pub content_hash: Option<String>,
+    pub eml_path: Option<String>,
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/v1/webhook/evolution",
+    tag = "webhook",
+    request_body = serde_json::Value,
+    responses(
+        (status = 200, description = "Webhook processed successfully", body = WebhookResult),
+        (status = 400, description = "Invalid webhook payload"),
+        (status = 403, description = "Evolution adapter is disabled"),
+        (status = 500, description = "Database or storage pipeline error")
+    )
+)]
 pub async fn evolution_webhook_handler(
     State(state): State<AppState>,
     Json(payload): Json<Value>,

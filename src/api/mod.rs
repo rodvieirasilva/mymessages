@@ -1,5 +1,6 @@
 pub mod attachments;
 pub mod chats;
+pub mod openapi;
 pub mod search;
 pub mod state;
 pub mod webhook;
@@ -40,8 +41,9 @@ pub fn create_router(state: AppState, static_dir: Option<PathBuf>) -> Router {
 
     let mut app = Router::new()
         .nest("/api/v1", api_routes)
-        .layer(cors)
-        .with_state(state);
+        .with_state(state)
+        .merge(openapi::swagger_ui())
+        .layer(cors);
 
     if let Some(dir) = static_dir {
         if dir.exists() {
@@ -76,7 +78,23 @@ mod tests {
             .uri("/api/v1/chats")
             .body(Body::empty())
             .unwrap();
-        let resp = router.oneshot(req).await.unwrap();
+        let resp = router.clone().oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
+
+        // Test OpenAPI spec endpoint
+        let openapi_req = Request::builder()
+            .uri("/api-docs/openapi.json")
+            .body(Body::empty())
+            .unwrap();
+        let openapi_resp = router.clone().oneshot(openapi_req).await.unwrap();
+        assert_eq!(openapi_resp.status(), StatusCode::OK);
+
+        // Test Swagger UI endpoint
+        let swagger_req = Request::builder()
+            .uri("/swagger-ui/")
+            .body(Body::empty())
+            .unwrap();
+        let swagger_resp = router.oneshot(swagger_req).await.unwrap();
+        assert_eq!(swagger_resp.status(), StatusCode::OK);
     }
 }

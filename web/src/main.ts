@@ -18,6 +18,11 @@ async function init() {
         <input type="text" id="searchInput" placeholder="Search all messages, senders, files..." />
         <button id="searchBtn">Search</button>
       </div>
+      <div class="header-actions">
+        <a href="/swagger-ui/" target="_blank" rel="noopener" class="swagger-link" title="OpenAPI & Swagger Documentation">
+          Swagger API &rarr;
+        </a>
+      </div>
     </header>
     <main class="app-main">
       <aside class="sidebar">

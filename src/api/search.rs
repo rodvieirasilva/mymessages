@@ -4,8 +4,26 @@ use axum::response::IntoResponse;
 use axum::Json;
 
 use crate::api::state::AppState;
-use crate::index::{search_messages, SearchQuery};
+use crate::index::{search_messages, SearchQuery, SearchResult};
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/search",
+    tag = "search",
+    params(
+        ("query" = Option<String>, Query, description = "Search query string for full-text search"),
+        ("source" = Option<String>, Query, description = "Filter by source (e.g. whatsapp)"),
+        ("chat_id" = Option<String>, Query, description = "Filter by conversation ID"),
+        ("has_media" = Option<bool>, Query, description = "Filter messages that contain attachments"),
+        ("media_type" = Option<String>, Query, description = "Filter by media type (image, audio, video, document)"),
+        ("limit" = Option<usize>, Query, description = "Maximum number of messages to return (default 50)"),
+        ("offset" = Option<usize>, Query, description = "Offset for pagination (default 0)"),
+    ),
+    responses(
+        (status = 200, description = "Matching search results", body = Vec<SearchResult>),
+        (status = 500, description = "Internal database search error")
+    )
+)]
 pub async fn search_handler(
     State(state): State<AppState>,
     Query(params): Query<SearchQuery>,

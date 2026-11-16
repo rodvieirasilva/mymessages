@@ -159,5 +159,17 @@ async fn test_e2e_static_files_served_by_rust() {
     let resp_spa = router.clone().oneshot(req_spa).await.unwrap();
     assert_eq!(resp_spa.status(), StatusCode::OK);
 
+    // 3. Request OpenAPI JSON schema
+    let req_openapi = Request::builder().uri("/api-docs/openapi.json").body(Body::empty()).unwrap();
+    let resp_openapi = router.clone().oneshot(req_openapi).await.unwrap();
+    assert_eq!(resp_openapi.status(), StatusCode::OK);
+    let openapi_bytes = resp_openapi.into_body().collect().await.unwrap().to_bytes();
+    assert!(String::from_utf8_lossy(&openapi_bytes).contains("mymessages API"));
+
+    // 4. Request Swagger UI documentation
+    let req_swagger = Request::builder().uri("/swagger-ui/").body(Body::empty()).unwrap();
+    let resp_swagger = router.oneshot(req_swagger).await.unwrap();
+    assert_eq!(resp_swagger.status(), StatusCode::OK);
+
     let _ = fs::remove_dir_all(&temp_dir);
 }

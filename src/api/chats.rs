@@ -5,7 +5,7 @@ use axum::Json;
 use serde::Deserialize;
 
 use crate::api::state::AppState;
-use crate::index::{get_chat_messages, list_chats};
+use crate::index::{get_chat_messages, list_chats, ChatSummary, SearchResult};
 
 #[derive(Debug, Deserialize)]
 pub struct ChatMessagesQuery {
@@ -18,6 +18,18 @@ pub struct ChatsFilter {
     pub source: Option<String>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/chats",
+    tag = "chats",
+    params(
+        ("source" = Option<String>, Query, description = "Filter conversations by source ID (e.g. whatsapp)")
+    ),
+    responses(
+        (status = 200, description = "List of conversation summaries", body = Vec<ChatSummary>),
+        (status = 500, description = "Database error")
+    )
+)]
 pub async fn list_chats_handler(
     State(state): State<AppState>,
     Query(params): Query<ChatsFilter>,
@@ -33,6 +45,20 @@ pub async fn list_chats_handler(
     Ok(Json(chats))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/chats/{id}/messages",
+    tag = "chats",
+    params(
+        ("id" = String, Path, description = "Conversation unique ID"),
+        ("limit" = Option<usize>, Query, description = "Maximum messages to return (default 50)"),
+        ("before" = Option<i64>, Query, description = "Timestamp pagination cursor"),
+    ),
+    responses(
+        (status = 200, description = "List of messages in conversation", body = Vec<SearchResult>),
+        (status = 500, description = "Database error")
+    )
+)]
 pub async fn get_chat_messages_handler(
     State(state): State<AppState>,
     Path(chat_id): Path<String>,
