@@ -1,0 +1,23 @@
+{
+  "id": "MSG_FOLDER_003",
+  "source": "folder_chat",
+  "conversation_id": "direct_charlie",
+  "conversation_name": "Charlie",
+  "is_group": false,
+  "sender": {
+    "id": "user_charlie",
+    "name": "Charlie",
+    "phone_number": "+1555444333"
+  },
+  "timestamp": 1715000300,
+  "body": "Quick voice note regarding the deployment deadline.",
+  "is_from_me": false,
+  "attachments": [
+    {
+      "filename": "voice_note.ogg",
+      "mimetype": "audio/ogg; codecs=opus",
+      "duration_seconds": 15,
+      "base64": "T2dnUwACAAAAAAAAAAB..."
+    }
+  ]
+}

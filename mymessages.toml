@@ -1,0 +1,21 @@
+# mymessages Configuration File
+
+[server]
+host = "0.0.0.0"
+port = 8090
+static_dir = "./web/dist"
+cors_allowed_origins = ["*"]
+
+[storage]
+data_dir = "./data"
+enable_maildir = true
+enable_db = true
+
+[adapters.evolution]
+enabled = true
+webhook_path = "/api/v1/webhook/evolution"
+
+[adapters.folder]
+enabled = true
+folder_path = "./test_messages"
+file_pattern = "*.json"

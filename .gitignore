@@ -1,0 +1,23 @@
+# Rust
+/target
+**/*.rs.bk
+
+# Node / Web
+web/node_modules/
+web/dist/
+web/.eslintcache
+
+# Local data & archives
+data/
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
+
+# Environment & IDE
+.env
+.env.local
+.vscode/
+.idea/
+*.DS_Store

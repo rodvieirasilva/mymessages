@@ -1,0 +1,22 @@
+{
+  "id": "MSG_FOLDER_002",
+  "source": "folder_chat",
+  "conversation_id": "team_chat_alpha",
+  "conversation_name": "Team Alpha",
+  "is_group": true,
+  "sender": {
+    "id": "user_bob",
+    "name": "Bob",
+    "phone_number": "+1987654321"
+  },
+  "timestamp": 1715000200,
+  "body": "Here is the architectural diagram we sketched yesterday.",
+  "is_from_me": false,
+  "attachments": [
+    {
+      "filename": "architecture_diagram.png",
+      "mimetype": "image/png",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+    }
+  ]
+}

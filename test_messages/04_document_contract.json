@@ -1,0 +1,22 @@
+{
+  "id": "MSG_FOLDER_004",
+  "source": "folder_chat",
+  "conversation_id": "direct_charlie",
+  "conversation_name": "Charlie",
+  "is_group": false,
+  "sender": {
+    "id": "user_charlie",
+    "name": "Charlie",
+    "phone_number": "+1555444333"
+  },
+  "timestamp": 1715000400,
+  "body": "Signed agreement and vendor contract document attached.",
+  "is_from_me": false,
+  "attachments": [
+    {
+      "filename": "vendor_contract.pdf",
+      "mimetype": "application/pdf",
+      "base64": "JVBERi0xLjQKJcfs..."
+    }
+  ]
+}

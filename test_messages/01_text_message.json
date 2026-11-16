@@ -1,0 +1,16 @@
+{
+  "id": "MSG_FOLDER_001",
+  "source": "folder_chat",
+  "conversation_id": "team_chat_alpha",
+  "conversation_name": "Team Alpha",
+  "is_group": true,
+  "sender": {
+    "id": "user_alice",
+    "name": "Alice",
+    "phone_number": "+1234567890"
+  },
+  "timestamp": 1715000100,
+  "body": "Welcome everyone to our new project! Please review the documents.",
+  "is_from_me": false,
+  "attachments": []
+}

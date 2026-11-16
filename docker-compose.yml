@@ -1,0 +1,39 @@
+services:
+  evolution-api:
+    image: atendai/evolution-api:v2.1.2
+    container_name: evolution-api
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_URL=http://localhost:8080
+      - DOCKER_ENV=true
+      - DATABASE_ENABLED=false
+      - WEBHOOK_GLOBAL_ENABLED=true
+      - WEBHOOK_GLOBAL_URL=http://mymessages:8090/api/v1/webhook/evolution
+      - WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS=true
+      - WEBHOOK_EVENTS_MESSAGES_UPSERT=true
+      - WEBHOOK_GLOBAL_BASE64=true
+    volumes:
+      - evolution_instances:/evolution/instances
+
+  mymessages:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mymessages
+    restart: always
+    ports:
+      - "8090:8090"
+    environment:
+      - RUST_LOG=info
+      - MYMESSAGES_PORT=8090
+      - MYMESSAGES_DATA_DIR=/data
+    volumes:
+      - ./data:/data
+      - ./mymessages.toml:/app/mymessages.toml:ro
+    depends_on:
+      - evolution-api
+
+volumes:
+  evolution_instances:

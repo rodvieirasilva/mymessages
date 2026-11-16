@@ -1,0 +1,69 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fetchChatMessages, fetchChats, getAttachmentUrl, searchMessages } from './api';
+
+describe('api module', () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    globalThis.fetch = vi.fn();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('builds attachment url', () => {
+    expect(getAttachmentUrl('att_123/xyz')).toBe('/api/v1/attachments/att_123%2Fxyz');
+  });
+
+  it('calls search endpoint with parameters', async () => {
+    (globalThis.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => [{ id: 'm1' }],
+    });
+
+    const res = await searchMessages({ query: 'hello', has_media: true });
+    expect(globalThis.fetch).toHaveBeenCalledWith('/api/v1/search?query=hello&has_media=true');
+    expect(res).toEqual([{ id: 'm1' }]);
+  });
+
+  it('handles search failure', async () => {
+    (globalThis.fetch as any).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+    });
+
+    await expect(searchMessages({ query: 'fail' })).rejects.toThrow('Search request failed with status 500');
+  });
+
+  it('fetches chats with and without source filter', async () => {
+    (globalThis.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => [{ id: 'c1' }],
+    });
+
+    const chatsAll = await fetchChats();
+    expect(globalThis.fetch).toHaveBeenCalledWith('/api/v1/chats');
+    expect(chatsAll).toEqual([{ id: 'c1' }]);
+
+    (globalThis.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => [],
+    });
+
+    await fetchChats('whatsapp');
+    expect(globalThis.fetch).toHaveBeenCalledWith('/api/v1/chats?source=whatsapp');
+  });
+
+  it('fetches chat timeline messages', async () => {
+    (globalThis.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => [{ id: 'm1' }],
+    });
+
+    const msgs = await fetchChatMessages('c1', 20);
+    expect(globalThis.fetch).toHaveBeenCalledWith('/api/v1/chats/c1/messages?limit=20');
+    expect(msgs).toEqual([{ id: 'm1' }]);
+  });
+});
+

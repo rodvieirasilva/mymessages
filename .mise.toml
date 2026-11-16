@@ -1,0 +1,55 @@
+# Mise configuration for mymessages
+
+[tools]
+rust = "1.99.1"
+node = "26"
+
+[env]
+RUST_LOG = "info"
+MYMESSAGES_PORT = "8090"
+MYMESSAGES_DATA_DIR = "./data"
+
+[tasks."test:rust"]
+description = "Run Rust unit and integration tests"
+run = "cargo test"
+
+[tasks."test:web"]
+description = "Run web frontend unit tests"
+run = "npm --prefix web test"
+
+[tasks.test]
+description = "Run all unit and integration tests"
+depends = ["test:rust", "test:web"]
+
+[tasks."coverage:rust"]
+description = "Run Rust test coverage and enforce 80% threshold"
+run = "cargo llvm-cov --fail-under-lines 80"
+
+[tasks."coverage:web"]
+description = "Run Web test coverage and enforce 80% threshold"
+run = "npm --prefix web run test:coverage"
+
+[tasks.coverage]
+description = "Run test coverage for Rust and Web"
+depends = ["coverage:rust", "coverage:web"]
+
+[tasks.e2e]
+description = "Run end-to-end integration tests"
+run = "cargo test --test e2e_*"
+
+[tasks."web:dev"]
+description = "Start Vite development server"
+run = "npm --prefix web run dev"
+
+[tasks."web:build"]
+description = "Build production web assets"
+run = "npm --prefix web run build"
+
+[tasks.build]
+description = "Build web assets and release binary"
+depends = ["web:build"]
+run = "cargo build --release"
+
+[tasks.dev]
+description = "Run development backend server"
+run = "cargo run -- serve"
