@@ -1,5 +1,10 @@
+pub mod handlers;
+pub mod serve;
+
 use std::path::PathBuf;
 use clap::{Parser, Subcommand};
+
+pub use handlers::execute_command;
 
 #[derive(Parser, Debug)]
 #[command(name = "mymessages", about = "Local-first personal messaging vault and search engine")]
@@ -12,13 +17,16 @@ pub struct Cli {
 pub enum Commands {
     /// Start the background daemon, webhook receiver, and web server
     Serve {
-        #[arg(short, long)]
+        #[arg(short, long, env = "MYMESSAGES_CONFIG")]
         config: Option<PathBuf>,
 
-        #[arg(short, long)]
+        #[arg(short, long, env = "MYMESSAGES_PORT")]
         port: Option<u16>,
 
-        #[arg(short, long)]
+        #[arg(long, env = "MYMESSAGES_HOST")]
+        host: Option<String>,
+
+        #[arg(short, long, env = "MYMESSAGES_DATA_DIR")]
         data_dir: Option<PathBuf>,
     },
 

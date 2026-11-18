@@ -6,6 +6,7 @@ pub mod lucene;
 pub mod metadata;
 pub mod query_dsl;
 pub mod reindex;
+pub mod search_models;
 pub mod writer;
 
 pub use chats::{get_chat_messages, list_chats, ChatSummary};

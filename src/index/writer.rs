@@ -70,7 +70,7 @@ pub fn index_message(
     // 5. Insert attachments & gather attachment filenames for FTS
     let mut att_names = Vec::new();
     for (idx, att) in msg.attachments.iter().enumerate() {
-        let att_id = format!("{}_{}", att.sha256, idx);
+        let att_id = format!("{}_{}_{}", full_msg_id, att.sha256, idx);
         let fname = att.filename.as_deref();
         if let Some(name) = fname {
             att_names.push(name);

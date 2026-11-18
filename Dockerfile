@@ -40,5 +40,8 @@ ENV MYMESSAGES_STATIC_DIR=/app/web/dist
 VOLUME ["/data"]
 EXPOSE 8765
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD wget --spider -q http://127.0.0.1:8765/health || exit 1
+
 ENTRYPOINT ["mymessages"]
 CMD ["serve", "--config", "/app/mymessages.toml"]

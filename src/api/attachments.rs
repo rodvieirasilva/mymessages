@@ -1,6 +1,6 @@
 use axum::extract::{Path, State};
 use axum::http::header::{CONTENT_DISPOSITION, CONTENT_TYPE};
-use axum::http::{HeaderMap, StatusCode};
+use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::IntoResponse;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
@@ -51,10 +51,24 @@ pub async fn get_attachment_handler(
         .map_err(|_| (StatusCode::NOT_FOUND, "Attachment not found".into()))?
     };
 
-    let full_eml_path = if state.storage.root_dir.join(&eml_rel_path).exists() {
-        state.storage.root_dir.join(&eml_rel_path)
+    let rel_path = std::path::Path::new(&eml_rel_path);
+    if rel_path.is_absolute()
+        || rel_path.components().any(|c| {
+            matches!(
+                c,
+                std::path::Component::ParentDir
+                    | std::path::Component::RootDir
+                    | std::path::Component::Prefix(_)
+            )
+        })
+    {
+        return Err((StatusCode::BAD_REQUEST, "Invalid attachment path".into()));
+    }
+
+    let full_eml_path = if state.storage.root_dir.join(rel_path).exists() {
+        state.storage.root_dir.join(rel_path)
     } else {
-        state.data_dir.join(&eml_rel_path)
+        state.data_dir.join(rel_path)
     };
     let eml_content = fs::read_to_string(&full_eml_path).map_err(|e| {
         (
@@ -63,13 +77,20 @@ pub async fn get_attachment_handler(
         )
     })?;
 
+    // Find the header boundary to avoid matching headers inside message text
+    let header_end = eml_content
+        .find("\r\n\r\n")
+        .or_else(|| eml_content.find("\n\n"))
+        .unwrap_or(0);
+    let mime_body = &eml_content[header_end..];
+
     // Extract base64 part with matching SHA-256 header
     let target_header = format!("X-Attachment-SHA256: {}", sha256);
-    let pos = eml_content
+    let pos = mime_body
         .find(&target_header)
         .ok_or((StatusCode::NOT_FOUND, "Attachment part not found in EML".into()))?;
 
-    let after_header = &eml_content[pos + target_header.len()..];
+    let after_header = &mime_body[pos + target_header.len()..];
     let body_start = after_header
         .find("\r\n\r\n")
         .map(|i| i + 4)
@@ -95,12 +116,33 @@ pub async fn get_attachment_handler(
     })?;
 
     let mut headers = HeaderMap::new();
-    headers.insert(CONTENT_TYPE, mimetype.parse().unwrap());
+    let content_type = HeaderValue::from_str(&mimetype)
+        .unwrap_or_else(|_| HeaderValue::from_static("application/octet-stream"));
+    headers.insert(CONTENT_TYPE, content_type);
+    headers.insert(
+        axum::http::header::HeaderName::from_static("x-content-type-options"),
+        HeaderValue::from_static("nosniff"),
+    );
+
+    let is_safe_inline = (mimetype.starts_with("image/") && mimetype != "image/svg+xml")
+        || mimetype.starts_with("audio/")
+        || mimetype.starts_with("video/")
+        || mimetype == "application/pdf";
+
+    let disposition_type = if is_safe_inline { "inline" } else { "attachment" };
     if let Some(fname) = filename {
-        headers.insert(
-            CONTENT_DISPOSITION,
-            format!("inline; filename=\"{}\"", fname).parse().unwrap(),
-        );
+        let clean_fname: String = fname
+            .chars()
+            .filter(|c| !c.is_control() && *c != '"' && *c != '\r' && *c != '\n')
+            .collect();
+        let disp_val = format!("{}; filename=\"{}\"", disposition_type, clean_fname);
+        if let Ok(hv) = HeaderValue::from_str(&disp_val) {
+            headers.insert(CONTENT_DISPOSITION, hv);
+        } else if let Ok(hv) = HeaderValue::from_str(disposition_type) {
+            headers.insert(CONTENT_DISPOSITION, hv);
+        }
+    } else if let Ok(hv) = HeaderValue::from_str(disposition_type) {
+        headers.insert(CONTENT_DISPOSITION, hv);
     }
 
     Ok((headers, binary))

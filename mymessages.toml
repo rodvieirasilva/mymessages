@@ -1,10 +1,10 @@
 # mymessages Configuration File
 
 [server]
-host = "0.0.0.0"
+host = "127.0.0.1"
 port = 8765
 static_dir = "./web/dist"
-cors_allowed_origins = ["*"]
+cors_allowed_origins = ["http://localhost:8765", "http://127.0.0.1:8765"]
 
 # Modular list of storage targets
 [[storages]]
@@ -22,13 +22,12 @@ path = "./data/messages.sqlite3"
 # Ingestion Adapters
 [adapters.evolution]
 enabled = true
-webhook_path = "/api/v1/webhook/evolution"
+webhook_path = "/v1/webhook/evolution"
 
 [adapters.waha]
 enabled = true
-webhook_path = "/api/v1/webhook/waha"
+webhook_path = "/v1/webhook/waha"
 api_url = "http://127.0.0.1:8768"
-api_key = "waha-secret-key"
 
 [adapters.folder]
 enabled = true

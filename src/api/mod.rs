@@ -1,5 +1,6 @@
 pub mod attachments;
 pub mod chats;
+pub mod health;
 pub mod mcp;
 pub mod openapi;
 pub mod search;
@@ -34,6 +35,7 @@ pub fn create_router(state: AppState, static_dir: Option<PathBuf>) -> Router {
     };
 
     let api_routes = Router::new()
+        .route("/health", get(health::health_handler))
         .route("/search", any(search::search_unified_handler))
         .route("/chats", get(chats::list_chats_handler))
         .route("/chats/{id}/messages", get(chats::get_chat_messages_handler))
@@ -43,6 +45,7 @@ pub fn create_router(state: AppState, static_dir: Option<PathBuf>) -> Router {
         .route("/webhook/waha", post(webhook::waha_webhook_handler));
 
     let mut app = Router::new()
+        .route("/health", get(health::health_handler))
         .nest("/v1", api_routes.clone())
         .nest("/api/v1", api_routes)
         .with_state(state)

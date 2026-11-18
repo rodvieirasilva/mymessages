@@ -20,6 +20,18 @@ pub fn build_eml(msg: &CanonicalMessage, content_hash: &str) -> String {
     out.push_str(&format!("X-MyMessages-Source: {}\r\n", msg.source));
     out.push_str(&format!("X-MyMessages-Chat-ID: {}\r\n", msg.conversation_id));
     out.push_str(&format!("X-MyMessages-Message-ID: {}\r\n", msg.id));
+    out.push_str(&format!("X-MyMessages-Sender-ID: {}\r\n", msg.sender.id));
+    if let Some(ref sname) = msg.sender.name {
+        let clean_sname = sname.replace(['\r', '\n'], " ");
+        out.push_str(&format!("X-MyMessages-Sender-Name: {}\r\n", clean_sname));
+    }
+    if let Some(ref phone) = msg.sender.phone_number {
+        out.push_str(&format!("X-MyMessages-Sender-Phone: {}\r\n", phone));
+    }
+    out.push_str(&format!("X-MyMessages-Is-Group: {}\r\n", msg.is_group));
+    if let Some(ref reply_to) = msg.reply_to_id {
+        out.push_str(&format!("X-MyMessages-Reply-To: {}\r\n", reply_to));
+    }
     out.push_str(&format!("X-MyMessages-SHA256: {}\r\n", content_hash));
     out.push_str(&format!(
         "X-MyMessages-Direction: {}\r\n",

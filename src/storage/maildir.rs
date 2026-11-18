@@ -14,9 +14,19 @@ impl MaildirStorage {
     }
 
     pub fn sanitize_name(name: &str) -> String {
-        name.chars()
+        let cleaned: String = name
+            .chars()
             .map(|c| if c.is_alphanumeric() || c == '.' || c == '-' || c == '_' || c == '@' { c } else { '_' })
-            .collect()
+            .collect();
+        if cleaned.is_empty() || cleaned == "." || cleaned == ".." {
+            return "unknown".to_string();
+        }
+        let stripped = cleaned.trim_start_matches('.');
+        if stripped.is_empty() {
+            "unknown".to_string()
+        } else {
+            stripped.to_string()
+        }
     }
 
     pub fn get_chat_dir(&self, source: &str, chat_id: &str) -> PathBuf {

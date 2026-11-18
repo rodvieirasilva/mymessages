@@ -103,6 +103,29 @@ describe('render helpers', () => {
     expect(outEl.innerHTML).toContain('<b>Matched</b> snippet');
   });
 
+  it('escapes malicious HTML in snippet while preserving bold highlight (XSS prevention)', () => {
+    const maliciousMsg: SearchResult = {
+      id: 'xss_msg',
+      source: 'whatsapp',
+      conversation_id: 'c1',
+      conversation_name: null,
+      sender_name: 'Attacker',
+      timestamp: 1700000000,
+      body: '<script>alert(1)</script> <img src=x onerror=alert(2)> contract',
+      eml_path: 'path',
+      has_attachments: false,
+      is_from_me: false,
+      snippet: '<script>alert(1)</script> <img src=x onerror=alert(2)> <b>contract</b>',
+      attachments: [],
+    };
+    const el = renderMessage(maliciousMsg);
+    const bodyEl = el.querySelector('.message-body') as HTMLElement;
+    expect(bodyEl.querySelector('script')).toBeNull();
+    expect(bodyEl.querySelector('img')).toBeNull();
+    expect(bodyEl.innerHTML).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+    expect(bodyEl.innerHTML).toContain('<b>contract</b>');
+  });
+
   it('renders chat list correctly', () => {
     const onSelect = vi.fn();
     const emptyEl = renderChatList([], null, onSelect);

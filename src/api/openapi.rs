@@ -15,6 +15,7 @@ use crate::mcp::protocol::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
         crate::api::mcp::mcp_http_handler,
         crate::api::webhook::evolution_webhook_handler,
         crate::api::webhook::waha_webhook_handler,
+        crate::api::health::health_handler,
     ),
     components(
         schemas(

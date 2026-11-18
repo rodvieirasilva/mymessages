@@ -18,6 +18,11 @@ export function escapeHtml(str: string): string {
   return div.innerHTML;
 }
 
+export function renderSafeSnippet(container: HTMLElement, snippet: string): void {
+  const escaped = escapeHtml(snippet);
+  container.innerHTML = escaped.replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>');
+}
+
 export function renderMedia(att: AttachmentInfo): HTMLElement {
   const wrapper = document.createElement('div');
   wrapper.className = 'attachment-item';
@@ -87,7 +92,7 @@ export function renderMessage(msg: SearchResult): HTMLElement {
   content.className = 'message-body';
   content.dataset.testid = 'message-body';
   if (msg.snippet) {
-    content.innerHTML = msg.snippet;
+    renderSafeSnippet(content, msg.snippet);
   } else if (msg.body) {
     content.textContent = msg.body;
   }
