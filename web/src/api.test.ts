@@ -97,5 +97,13 @@ describe('api module', () => {
     const msgs = await fetchChatMessages('c1', 20);
     expect(globalThis.fetch).toHaveBeenCalledWith('/v1/chats/c1/messages?limit=20');
     expect(msgs).toEqual([{ id: 'm1' }]);
+
+    (globalThis.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => [{ id: 'm0' }],
+    });
+    const older = await fetchChatMessages('c1', 50, 1700000000);
+    expect(globalThis.fetch).toHaveBeenCalledWith('/v1/chats/c1/messages?limit=50&before=1700000000');
+    expect(older).toEqual([{ id: 'm0' }]);
   });
 });

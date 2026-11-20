@@ -5,7 +5,6 @@ pub mod msgstore;
 pub mod sms;
 pub mod wa_contacts;
 
-use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use anyhow::Result;
