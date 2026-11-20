@@ -18,6 +18,9 @@ pub struct ChatsFilter {
     pub source: Option<String>,
     pub account: Option<String>,
     pub query: Option<String>,
+    pub has_media: Option<bool>,
+    pub media_type: Option<String>,
+    pub is_from_me: Option<bool>,
 }
 
 #[utoipa::path(
@@ -47,6 +50,9 @@ pub async fn list_chats_handler(
         params.source.as_deref(),
         params.account.as_deref(),
         params.query.as_deref(),
+        params.has_media,
+        params.media_type.as_deref(),
+        params.is_from_me,
     ).map_err(|e| {
         (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to list chats: {}", e))
     })?;
@@ -98,7 +104,7 @@ mod tests {
 
         let resp_list = list_chats_handler(
             State(state.clone()),
-            Query(ChatsFilter { source: None, account: None, query: None }),
+            Query(ChatsFilter { source: None, account: None, query: None, has_media: None, media_type: None, is_from_me: None }),
         )
         .await
         .unwrap();
@@ -106,7 +112,7 @@ mod tests {
 
         let resp_list_filter = list_chats_handler(
             State(state.clone()),
-            Query(ChatsFilter { source: Some("whatsapp".into()), account: Some("default".into()), query: Some("test".into()) }),
+            Query(ChatsFilter { source: Some("whatsapp".into()), account: Some("default".into()), query: Some("test".into()), has_media: Some(false), media_type: None, is_from_me: None }),
         )
         .await
         .unwrap();

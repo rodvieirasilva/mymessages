@@ -116,7 +116,11 @@ async function loadChats() {
   const container = document.getElementById('chatListContainer')!;
   try {
     const q = currentFilters.query.trim();
-    currentChats = await fetchChats(currentFilters.source, q || undefined, currentFilters.account);
+    currentChats = await fetchChats(currentFilters.source, q || undefined, currentFilters.account, {
+      has_media: currentFilters.has_media,
+      media_type: currentFilters.media_type,
+      is_from_me: currentFilters.is_from_me,
+    });
     renderChats();
   } catch {
     container.innerHTML = `<div class="error-state">Failed to load chats</div>`;
@@ -135,7 +139,17 @@ function renderChats() {
       selectedChatId = chat.id;
       currentFilters.chat_id = chat.id;
       renderChats();
-      await loadChatTimeline(chat);
+      const hasMsgFilters = Boolean(
+        currentFilters.query.trim()
+          || currentFilters.media_type
+          || currentFilters.has_media !== undefined
+          || currentFilters.is_from_me !== undefined,
+      );
+      if (hasMsgFilters) {
+        await runSearch();
+      } else {
+        await loadChatTimeline(chat);
+      }
     }),
   );
 }

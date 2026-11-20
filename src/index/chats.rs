@@ -24,6 +24,9 @@ pub fn list_chats(
     source_filter: Option<&str>,
     account_filter: Option<&str>,
     query_filter: Option<&str>,
+    has_media: Option<bool>,
+    media_type: Option<&str>,
+    is_from_me: Option<bool>,
 ) -> Result<Vec<ChatSummary>> {
     let clean_query = query_filter.unwrap_or("").trim();
     let (effective_source, effective_account, query_term) = if clean_query.is_empty() {
@@ -69,13 +72,27 @@ pub fn list_chats(
                   WHERE m2.body LIKE '%' || ?3 || '%' OR ct.display_name LIKE '%' || ?3 || '%'
               )
           ))
+          AND (?4 IS NULL AND ?5 IS NULL AND ?6 IS NULL OR EXISTS (
+              SELECT 1 FROM messages m3
+              WHERE m3.conversation_id = c.id
+                AND (?4 IS NULL OR m3.has_attachments = ?4)
+                AND (?5 IS NULL OR EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m3.id AND a.media_type = ?5))
+                AND (?6 IS NULL OR m3.is_from_me = ?6)
+          ))
         GROUP BY c.id
         ORDER BY last_ts DESC NULLS LAST
     ";
 
     let mut stmt = conn.prepare(sql)?;
     let rows = stmt.query_map(
-        [effective_source.as_deref(), effective_account.as_deref(), query_term.as_deref()],
+        rusqlite::params![
+            effective_source.as_deref(),
+            effective_account.as_deref(),
+            query_term.as_deref(),
+            has_media,
+            media_type,
+            is_from_me,
+        ],
         |row| {
             Ok(ChatSummary {
                 id: row.get(0)?,

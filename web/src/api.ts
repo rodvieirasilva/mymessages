@@ -35,11 +35,15 @@ export async function fetchChats(
   source?: string,
   query?: string,
   account?: string,
+  extra?: Pick<SearchFilters, 'has_media' | 'media_type' | 'is_from_me'>,
 ): Promise<ChatSummary[]> {
   const params = new URLSearchParams();
   if (source) params.set('source', source);
   if (account) params.set('account', account);
   if (query) params.set('query', query);
+  if (extra?.has_media !== undefined) params.set('has_media', String(extra.has_media));
+  if (extra?.media_type) params.set('media_type', extra.media_type);
+  if (extra?.is_from_me !== undefined) params.set('is_from_me', String(extra.is_from_me));
   const qs = params.toString();
   const url = qs ? `${BASE_URL}/chats?${qs}` : `${BASE_URL}/chats`;
   const res = await fetch(url);

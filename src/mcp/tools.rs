@@ -123,7 +123,7 @@ pub fn execute_tool(db: &Database, name: &str, args: &Value) -> McpCallToolResul
             let source = args.get("source").and_then(|s| s.as_str());
             let account = args.get("account").and_then(|a| a.as_str());
             let query = args.get("query").and_then(|q| q.as_str());
-            match list_chats(db.conn(), source, account, query) {
+            match list_chats(db.conn(), source, account, query, None, None, None) {
                 Ok(chats) => {
                     let json_text = serde_json::to_string_pretty(&chats).unwrap_or_default();
                     McpCallToolResult::text(format!("Retrieved {} conversations:\n{}", chats.len(), json_text))
