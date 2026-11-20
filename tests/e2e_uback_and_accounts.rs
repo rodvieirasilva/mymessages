@@ -103,6 +103,7 @@ async fn test_e2e_uback_multi_account_zero_duplication_and_api() {
         credentials_file: None,
         accounts: vec![],
         index_media_without_db: false,
+        poll_interval_seconds: 30,
     });
 
     let pipeline = StoragePipeline::from_config(&cfg, db_arc, storage_arc);

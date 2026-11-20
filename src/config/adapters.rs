@@ -52,6 +52,10 @@ impl Default for WahaAdapterConfig {
     }
 }
 
+fn default_poll_interval() -> u64 {
+    30
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct UbackAdapterConfig {
     #[serde(default)]
@@ -64,6 +68,8 @@ pub struct UbackAdapterConfig {
     pub accounts: Vec<String>,
     #[serde(default)]
     pub index_media_without_db: bool,
+    #[serde(default = "default_poll_interval")]
+    pub poll_interval_seconds: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
