@@ -5,7 +5,7 @@ export function formatDate(timestamp: number): string {
   if (!timestamp) return '';
   const d = new Date(timestamp * 1000);
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
 export function escapeHtml(str: string): string {
@@ -74,6 +74,13 @@ export function renderMessage(msg: SearchResult): HTMLElement {
   time.textContent = formatDate(msg.timestamp);
 
   header.appendChild(sender);
+  if (msg.source === 'sms') {
+    const smsBadge = document.createElement('span');
+    smsBadge.className = 'account-badge';
+    smsBadge.dataset.testid = 'source-badge';
+    smsBadge.textContent = 'SMS';
+    header.appendChild(smsBadge);
+  }
   if (msg.account && msg.account !== 'default') {
     const badge = document.createElement('span');
     badge.className = 'account-badge';
@@ -147,7 +154,10 @@ export function renderChatList(
     const acctPart = chat.account_id && chat.account_id !== 'default'
       ? `<span class="account-badge" data-testid="chat-account-badge">${escapeHtml(chat.account_id)}</span>`
       : '';
-    meta.innerHTML = `<span>${chat.message_count} msgs</span>${acctPart}<span>${formatDate(chat.last_timestamp || 0)}</span>`;
+    const smsPart = chat.source_id === 'sms'
+      ? `<span class="account-badge" data-testid="chat-source-badge">SMS</span>`
+      : '';
+    meta.innerHTML = `<span>${chat.message_count} msgs</span>${smsPart}${acctPart}<span>${formatDate(chat.last_timestamp || 0)}</span>`;
 
     item.appendChild(name);
     item.appendChild(meta);
