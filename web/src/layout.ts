@@ -1,10 +1,15 @@
 export function buildAppShell(initialTheme: 'dark' | 'light'): string {
+  const ver = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.2.0';
+  const built = typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : '';
+  const sha = typeof __GIT_SHA__ !== 'undefined' ? __GIT_SHA__ : '';
+  const versionLabel = built && sha ? `v${ver} (${built} · ${sha})` : `v${ver}`;
+
   return `
     <header class="app-header">
       <div class="logo">
         <img src="/logo.svg" alt="mymessages" class="brand-logo" />
         <span>mymessages</span>
-        <span class="version-badge">v0.2.0</span>
+        <span class="version-badge" data-testid="version-badge">${versionLabel}</span>
       </div>
       <div class="search-bar-container">
         <input type="text" id="searchInput" data-testid="search-input" placeholder="Search text or Lucene (e.g. from:Alice account:phone_a after:2024-01-01)..." />
