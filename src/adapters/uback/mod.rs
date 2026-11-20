@@ -144,8 +144,17 @@ impl UbackAdapter {
 
     fn scan_target(&self, target: &UbackAccountTarget) -> Result<(Vec<CanonicalMessage>, Vec<String>)> {
         let mut warnings = Vec::new();
+        let account_root = if target.source == "sms" {
+            target.wa_dir.parent().and_then(|p| p.parent())
+        } else {
+            target.wa_dir.parent()
+        };
+        let vcf_contacts = account_root
+            .map(|r| wa_contacts::read_vcf_contacts(&r.join("snapshots/contacts")))
+            .unwrap_or_default();
+
         if target.source == "sms" {
-            let msgs = sms::read_sms_snapshots(&target.wa_dir, &target.account)?;
+            let msgs = sms::read_sms_snapshots(&target.wa_dir, &target.account, &vcf_contacts)?;
             return Ok((msgs, warnings));
         }
 
@@ -169,16 +178,19 @@ impl UbackAdapter {
             return Ok((Vec::new(), warnings));
         }
 
-        let contacts = match wa_db_file {
-            Some(ref wa_path) => match open_or_decrypt_db(wa_path, &target.account, &self.credentials) {
-                Ok(temp_wa) => wa_contacts::read_wa_contacts(temp_wa.path()).unwrap_or_default(),
+        let mut contacts = vcf_contacts;
+        if let Some(ref wa_path) = wa_db_file {
+            match open_or_decrypt_db(wa_path, &target.account, &self.credentials) {
+                Ok(temp_wa) => {
+                    if let Ok(wa_map) = wa_contacts::read_wa_contacts(temp_wa.path()) {
+                        contacts.extend(wa_map);
+                    }
+                }
                 Err(e) => {
                     warnings.push(format!("Could not read wa.db for '{}': {}", target.account, e));
-                    HashMap::new()
                 }
-            },
-            None => HashMap::new(),
-        };
+            }
+        }
 
         let mut all_messages = Vec::new();
         for delta_path in &delta_dbs {

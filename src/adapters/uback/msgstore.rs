@@ -6,7 +6,7 @@ use rusqlite::{Connection, OpenFlags};
 use sha2::{Digest, Sha256};
 
 use crate::adapters::uback::media_index::{guess_mimetype, UbackMediaIndex};
-use crate::adapters::uback::wa_contacts::WaContact;
+use crate::adapters::uback::wa_contacts::{lookup_contact, WaContact};
 use crate::models::{CanonicalAttachment, CanonicalMessage, CanonicalParticipant};
 
 fn table_exists(conn: &Connection, name: &str) -> bool {
@@ -138,8 +138,8 @@ impl RawWaRow {
         let ts_secs = if self.timestamp_ms > 10_000_000_000 { self.timestamp_ms / 1000 } else { self.timestamp_ms };
         let timestamp = DateTime::from_timestamp(ts_secs, 0).unwrap_or_else(Utc::now);
         let sender_jid = if self.is_from_me { "me".to_string() } else if !self.sender_jid.is_empty() { self.sender_jid } else { self.chat_jid.clone() };
-        let sender_contact = contacts.get(&sender_jid);
-        let chat_contact = contacts.get(&self.chat_jid);
+        let sender_contact = lookup_contact(contacts, &sender_jid);
+        let chat_contact = lookup_contact(contacts, &self.chat_jid);
 
         let sender_name = if self.is_from_me {
             Some(account.to_string())

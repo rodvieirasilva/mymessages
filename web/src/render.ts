@@ -4,12 +4,8 @@ import type { AttachmentInfo, ChatSummary, SearchResult } from './types';
 export function formatDate(timestamp: number): string {
   if (!timestamp) return '';
   const d = new Date(timestamp * 1000);
-  return d.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export function escapeHtml(str: string): string {

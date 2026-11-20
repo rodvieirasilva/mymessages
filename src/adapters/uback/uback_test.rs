@@ -196,7 +196,14 @@ fn test_uback_sms_snapshots() {
     let _ = fs::remove_dir_all(&root);
 
     let sms_dir = root.join("phone_sms/snapshots/sms/2026/02");
+    let contacts_dir = root.join("phone_sms/snapshots/contacts/2026/02");
     fs::create_dir_all(&sms_dir).unwrap();
+    fs::create_dir_all(&contacts_dir).unwrap();
+    fs::write(
+        contacts_dir.join("contacts_20260220.vcf"),
+        "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Alice Smith\r\nTEL:+55 11 99999-1111\r\nEND:VCARD\r\n",
+    )
+    .unwrap();
     fs::write(
         sms_dir.join("sms_20260220.json"),
         serde_json::json!([
@@ -213,6 +220,8 @@ fn test_uback_sms_snapshots() {
     assert_eq!(summary.messages.len(), 2);
     assert_eq!(summary.messages[0].source, "sms");
     assert_eq!(summary.messages[0].account, "phone_sms");
+    assert_eq!(summary.messages[0].conversation_name.as_deref(), Some("Alice Smith"));
+    assert_eq!(summary.messages[0].sender.name.as_deref(), Some("Alice Smith"));
     assert!(!summary.messages[0].is_from_me);
     assert!(summary.messages[1].is_from_me);
 

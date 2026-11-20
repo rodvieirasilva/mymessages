@@ -1,9 +1,11 @@
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
+use crate::adapters::uback::wa_contacts::{lookup_contact, WaContact};
 use crate::models::{CanonicalMessage, CanonicalParticipant};
 
 #[derive(Debug, Deserialize)]
@@ -20,7 +22,11 @@ struct UbackSmsRecord {
 
 /// Scan `<account>/snapshots/sms/**/sms_*.json` (UBack `SnapshotExporter`) into
 /// `CanonicalMessage` items with `source = "sms"`.
-pub fn read_sms_snapshots(sms_root: &Path, account: &str) -> Result<Vec<CanonicalMessage>> {
+pub fn read_sms_snapshots(
+    sms_root: &Path,
+    account: &str,
+    contacts: &HashMap<String, WaContact>,
+) -> Result<Vec<CanonicalMessage>> {
     let mut json_files = Vec::new();
     collect_json_files(sms_root, &mut json_files);
     json_files.sort();
@@ -49,16 +55,20 @@ pub fn read_sms_snapshots(sms_root: &Path, account: &str) -> Result<Vec<Canonica
             let timestamp = DateTime::from_timestamp(ts_secs, 0).unwrap_or_else(Utc::now);
             let msg_id = format!("sms_{}_{}_{}", sanitize_id(&addr), rec.date_ms, idx);
 
+            let resolved_name = lookup_contact(contacts, &addr)
+                .and_then(|c| c.display_name.clone())
+                .unwrap_or_else(|| addr.clone());
+
             messages.push(CanonicalMessage {
                 id: msg_id,
                 source: "sms".to_string(),
                 account: account.to_string(),
                 conversation_id: addr.clone(),
-                conversation_name: Some(addr.clone()),
+                conversation_name: Some(resolved_name.clone()),
                 is_group: false,
                 sender: CanonicalParticipant {
                     id: if is_from_me { "me".into() } else { addr.clone() },
-                    name: Some(if is_from_me { account.to_string() } else { addr.clone() }),
+                    name: Some(if is_from_me { account.to_string() } else { resolved_name }),
                     phone_number: Some(addr),
                 },
                 recipients: Vec::new(),

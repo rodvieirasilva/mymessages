@@ -3,10 +3,10 @@ import { escapeHtml, formatDate, renderChatList, renderMedia, renderMessage } fr
 import type { AttachmentInfo, ChatSummary, SearchResult } from './types';
 
 describe('render helpers', () => {
-  it('formats timestamp correctly', () => {
+  it('formats timestamp as YYYY-MM-DD HH:MM in local timezone', () => {
     expect(formatDate(0)).toBe('');
     const formatted = formatDate(1700000000);
-    expect(formatted.length).toBeGreaterThan(0);
+    expect(formatted).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
   });
 
   it('escapes html entities', () => {
