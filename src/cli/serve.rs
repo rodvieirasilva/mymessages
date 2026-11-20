@@ -65,6 +65,9 @@ fn spawn_uback_poller(state: AppState) {
                 let creds = CredentialsStore::load(cfg_clone.credentials_file.as_deref());
                 let adapter = UbackAdapter::new(root, creds, cfg_clone.accounts, cfg_clone.index_media_without_db);
                 let summary = adapter.scan_all()?;
+                for w in &summary.warnings {
+                    warn!("UBack poller warning: {}", w);
+                }
                 let mut newly_indexed = 0usize;
                 for msg in &summary.messages {
                     let hash = msg.compute_content_hash();
