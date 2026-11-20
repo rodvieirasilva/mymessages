@@ -2,6 +2,7 @@ pub mod crypt15;
 pub mod db_loader;
 pub mod media_index;
 pub mod msgstore;
+pub mod sms;
 pub mod wa_contacts;
 
 use std::collections::HashMap;
@@ -64,7 +65,11 @@ impl UbackAdapter {
             .unwrap_or("default")
             .to_string();
         let mut found_direct = false;
-        for (folder, source) in [("whatsapp", "whatsapp"), ("whatsapp-business", "whatsapp_business")] {
+        for (folder, source) in [
+            ("whatsapp", "whatsapp"),
+            ("whatsapp-business", "whatsapp_business"),
+            ("snapshots/sms", "sms"),
+        ] {
             let wa_dir = self.backup_root.join(folder);
             if wa_dir.is_dir() && self.allows_account(&direct_name) {
                 targets.push(UbackAccountTarget {
@@ -91,7 +96,11 @@ impl UbackAdapter {
             if account.starts_with('.') || !self.allows_account(&account) {
                 continue;
             }
-            for (folder, source) in [("whatsapp", "whatsapp"), ("whatsapp-business", "whatsapp_business")] {
+            for (folder, source) in [
+                ("whatsapp", "whatsapp"),
+                ("whatsapp-business", "whatsapp_business"),
+                ("snapshots/sms", "sms"),
+            ] {
                 let wa_dir = acct_path.join(folder);
                 if wa_dir.is_dir() {
                     targets.push(UbackAccountTarget {
@@ -135,6 +144,11 @@ impl UbackAdapter {
 
     fn scan_target(&self, target: &UbackAccountTarget) -> Result<(Vec<CanonicalMessage>, Vec<String>)> {
         let mut warnings = Vec::new();
+        if target.source == "sms" {
+            let msgs = sms::read_sms_snapshots(&target.wa_dir, &target.account)?;
+            return Ok((msgs, warnings));
+        }
+
         let media_index = UbackMediaIndex::scan(&target.wa_dir)?;
 
         let delta_dbs = find_all_delta_dbs(&target.wa_dir.join("deltas"));

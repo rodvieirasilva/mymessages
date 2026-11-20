@@ -253,7 +253,6 @@ For agents operating via terminal commands or REST HTTP calls:
 - [Query Skill (CLI / HTTP)](skills/mymessages/SKILL.md)
 - [Ingestion Adapters Guide](docs/ADAPTERS.md)
 - [Release Process](docs/RELEASING.md)
-- [Implementation Roadmap](docs/ROADMAP.md)
 
 ---
 

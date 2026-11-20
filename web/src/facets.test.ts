@@ -29,7 +29,7 @@ describe('facets module', () => {
   it('renders facet bar with Account facet and handles filter changes', () => {
     const onChange = vi.fn();
     const accounts: AccountSummary[] = [
-      { id: 'phone_a', name: 'phone_a', sources: ['whatsapp'], message_count: 10, chat_count: 3 },
+      { id: 'phone_a', name: 'phone_a', sources: ['whatsapp', 'sms'], message_count: 10, chat_count: 3 },
       { id: 'phone_b', name: 'phone_b', sources: ['whatsapp', 'whatsapp_business'], message_count: 5, chat_count: 2 },
     ];
     const bar = renderFacetBar(

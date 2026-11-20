@@ -76,6 +76,11 @@ export function renderFacetBar(
   if (hasWaBusiness) {
     sourceOptions.splice(2, 0, { label: 'WhatsApp Business', value: 'whatsapp_business' });
   }
+  const hasSms = accounts.some((a) => a.sources.includes('sms'))
+    || filters.source === 'sms';
+  if (hasSms) {
+    sourceOptions.push({ label: 'SMS', value: 'sms' });
+  }
   bar.appendChild(
     renderFacetPills('Source', sourceOptions, filters.source, (val) => {
       onChange({ source: val });

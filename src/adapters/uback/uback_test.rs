@@ -189,3 +189,32 @@ fn test_uback_incremental_sqlite_deltas_with_optional_tables() {
 
     let _ = fs::remove_dir_all(&root);
 }
+
+#[test]
+fn test_uback_sms_snapshots() {
+    let root = std::env::temp_dir().join(format!("mymessages_uback_sms_{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+
+    let sms_dir = root.join("phone_sms/snapshots/sms/2026/02");
+    fs::create_dir_all(&sms_dir).unwrap();
+    fs::write(
+        sms_dir.join("sms_20260220.json"),
+        serde_json::json!([
+            { "address": "+5511999991111", "body": "Your verification code is 1234", "dateMs": 1740000000000i64, "type": 1 },
+            { "address": "+5511999991111", "body": "Thanks, got it!", "dateMs": 1740000060000i64, "type": 2 }
+        ])
+        .to_string(),
+    )
+    .unwrap();
+
+    let adapter = UbackAdapter::new(root.clone(), CredentialsStore::default(), vec![], false);
+    let summary = adapter.scan_all().unwrap();
+    assert_eq!(summary.accounts_scanned, vec!["phone_sms"]);
+    assert_eq!(summary.messages.len(), 2);
+    assert_eq!(summary.messages[0].source, "sms");
+    assert_eq!(summary.messages[0].account, "phone_sms");
+    assert!(!summary.messages[0].is_from_me);
+    assert!(summary.messages[1].is_from_me);
+
+    let _ = fs::remove_dir_all(&root);
+}
