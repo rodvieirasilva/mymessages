@@ -13,6 +13,7 @@ fn setup_test_db() -> Database {
     let msg = CanonicalMessage {
         id: "msg_mcp_1".into(),
         source: "whatsapp".into(),
+        account: "default".into(),
         conversation_id: "chat_mcp_1".into(),
         conversation_name: Some("Project MCP".into()),
         is_group: false,
@@ -67,7 +68,11 @@ fn test_execute_mcp_tools() {
     assert!(!res_dsl.is_error);
     assert!(res_dsl.content[0].text.contains("Found 1 messages"));
 
-    // 4. list_chats
+    // 4. list_accounts & list_chats
+    let res_accts = execute_tool(&db, "list_accounts", &json!({}));
+    assert!(!res_accts.is_error);
+    assert!(res_accts.content[0].text.contains("Retrieved 1 accounts"));
+
     let res_chats = execute_tool(&db, "list_chats", &json!({}));
     assert!(!res_chats.is_error);
     assert!(res_chats.content[0].text.contains("Retrieved 1 conversations"));

@@ -65,7 +65,52 @@ WAHA (`devlikeapro/waha`) provides another self-hosted WhatsApp HTTP engine (sup
 
 ---
 
-## 4. Future Adapters
+## 4. UBack Adapter (WhatsApp Media & `.crypt15` Backups)
+
+`mymessages` natively supports the [UBack](https://github.com/rodvieirasilva/uback) Android backup layout for both **WhatsApp** (`whatsapp/`) and **WhatsApp Business** (`whatsapp-business/`) across multiple device/account folders — **with zero media duplication**.
+
+### Expected Directory Layout
+```text
+<backup_root>/
+  <account_name>/
+    whatsapp/                         # or whatsapp-business/
+      deltas/<YYYY>/<MM>/msgstore_delta_YYYYMMDD_<from>_<to>.db  (UBack Option 1A incremental deltas)
+      databases/<YYYY>/<MM>/msgstore.db.crypt15                  (or plaintext msgstore.db)
+      backups/<YYYY>/<MM>/wa.db.crypt15                          (optional contacts DB)
+      received/
+        images/<YYYY>/<MM>/...
+        videos/<YYYY>/<MM>/...
+        audios/<YYYY>/<MM>/...
+        documents/<YYYY>/<MM>/...
+      sent/
+        images/<YYYY>/<MM>/...
+        videos/<YYYY>/<MM>/...
+        audios/<YYYY>/<MM>/...
+        documents/<YYYY>/<MM>/...
+```
+
+- **Incremental SQLite Deltas (`deltas/`)**: UBack Option 1A decrypts on-phone using `WHATSAPP_64DIGI_<account>` and uploads append-only SQLite deltas (`msgstore_delta_*.db`). `mymessages` reads **all** delta `.db` files chronologically so messages deleted later on the phone remain permanently searchable in the vault.
+- **Encrypted Snapshots (`databases/` & `backups/`)**: If full `.crypt15` databases are present, `mymessages` decrypts them natively in Rust using `WHATSAPP_64DIGI_<account>`.
+
+### Credentials & `.crypt15` Decryption Keys
+For each account's end-to-end encrypted `.crypt15` database, provide its 64-digit hex backup key via environment variable or a local gitignored credentials file (default `~/.credentials` or `MYMESSAGES_CREDENTIALS_FILE`):
+
+```bash
+WHATSAPP_64DIGI_<account_name>=<64-character-hex-key>
+```
+
+- Keys are resolved automatically per account (exact or case-insensitive match).
+- Decrypted databases are read from a temporary file that is immediately deleted after indexing.
+- Media attachments are referenced via `external_path` (`X-Attachment-External-Path` in Maildir `.eml` and `attachments.external_path` in SQLite) and streamed directly from `<backup_root>` via `GET /v1/attachments/{id}` with strict root-containment path validation — **no media files are copied or duplicated**.
+
+### Running UBack Ingestion
+```bash
+mymessages adapter run uback --path /path/to/uback/phone-backups --credentials ~/.credentials
+```
+
+---
+
+## 5. Future Adapters
 
 Because all platform specifics stop at the adapter level, adding new platforms is straightforward:
 

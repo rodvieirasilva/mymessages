@@ -23,6 +23,7 @@ impl FolderAdapter {
     pub fn parse_message_json(val: &Value) -> Result<CanonicalMessage> {
         let id = val["id"].as_str().context("Missing id in message json")?.to_string();
         let source = val["source"].as_str().unwrap_or("folder").to_string();
+        let account = val["account"].as_str().filter(|s| !s.is_empty()).unwrap_or("default").to_string();
         let conversation_id = val["conversation_id"].as_str().context("Missing conversation_id")?.to_string();
         let conversation_name = val["conversation_name"].as_str().map(|s| s.to_string());
         let is_group = val["is_group"].as_bool().unwrap_or(false);
@@ -57,6 +58,7 @@ impl FolderAdapter {
         Ok(CanonicalMessage {
             id,
             source,
+            account,
             conversation_id,
             conversation_name,
             is_group,

@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
 use chrono::{DateTime, Utc};
@@ -15,6 +16,7 @@ pub fn extract_header(eml: &str, header: &str) -> Option<String> {
 
 pub fn parse_eml_to_canonical(eml: &str) -> Option<CanonicalMessage> {
     let source = extract_header(eml, "X-MyMessages-Source").unwrap_or_else(|| "unknown".into());
+    let account = extract_header(eml, "X-MyMessages-Account").unwrap_or_else(|| "default".into());
     let conv_id = extract_header(eml, "X-MyMessages-Chat-ID").unwrap_or_else(|| "chat".into());
     let msg_id = extract_header(eml, "X-MyMessages-Message-ID")
         .or_else(|| extract_header(eml, "Message-ID"))
@@ -48,6 +50,7 @@ pub fn parse_eml_to_canonical(eml: &str) -> Option<CanonicalMessage> {
     Some(CanonicalMessage {
         id: msg_id,
         source,
+        account,
         conversation_id: conv_id,
         conversation_name: subject,
         is_group,
@@ -79,7 +82,7 @@ fn extract_eml_body_and_attachments(eml: &str) -> (Option<String>, Vec<Canonical
         return (if trimmed.is_empty() { None } else { Some(trimmed.to_string()) }, Vec::new());
     }
 
-    let boundary_opt = eml.lines().find_map(|line| {
+    let boundary = match eml.lines().find_map(|line| {
         if line.to_lowercase().contains("boundary=\"") {
             line.find("boundary=\"").and_then(|s| {
                 line[s + 10..].find('"').map(|e| line[s + 10..s + 10 + e].to_string())
@@ -87,9 +90,7 @@ fn extract_eml_body_and_attachments(eml: &str) -> (Option<String>, Vec<Canonical
         } else {
             None
         }
-    });
-
-    let boundary = match boundary_opt {
+    }) {
         Some(b) => b,
         None => return (None, Vec::new()),
     };
@@ -103,47 +104,64 @@ fn extract_eml_body_and_attachments(eml: &str) -> (Option<String>, Vec<Canonical
         if part_trimmed.is_empty() || part_trimmed == "--" {
             continue;
         }
-        if part_trimmed.contains("Content-Type: text/plain") {
-            let sep_pos = part_trimmed.find("\r\n\r\n").or_else(|| part_trimmed.find("\n\n"));
-            if let Some(pos) = sep_pos {
+        if part_trimmed.contains("Content-Type: text/plain") && !part_trimmed.contains("Content-Disposition: attachment") {
+            if let Some(pos) = part_trimmed.find("\r\n\r\n").or_else(|| part_trimmed.find("\n\n")) {
                 let text = part_trimmed[pos..].trim();
                 if !text.is_empty() {
                     body = Some(text.to_string());
                 }
             }
         } else if part_trimmed.contains("X-Attachment-SHA256:") || part_trimmed.contains("Content-Disposition: attachment") {
-            let filename = part_trimmed.lines().find_map(|l| {
-                if l.to_lowercase().starts_with("content-disposition:") || l.to_lowercase().starts_with("content-type:") {
-                    l.find("filename=\"").and_then(|s| {
-                        l[s + 10..].find('"').map(|e| l[s + 10..s + 10 + e].to_string())
-                    })
-                } else {
-                    None
-                }
-            });
-
-            let mimetype = part_trimmed.lines().find_map(|l| {
-                if l.to_lowercase().starts_with("content-type:") {
-                    let val = l["content-type:".len()..].trim();
-                    let mime = val.split(';').next().unwrap_or("application/octet-stream").trim();
-                    Some(mime.to_string())
-                } else {
-                    None
-                }
-            }).unwrap_or_else(|| "application/octet-stream".into());
-
-            let sep_pos = part_trimmed.find("\r\n\r\n").or_else(|| part_trimmed.find("\n\n"));
-            if let Some(pos) = sep_pos {
-                let raw_b64: String = part_trimmed[pos..]
-                    .chars()
-                    .filter(|c| !c.is_whitespace())
-                    .collect();
-                if let Ok(data) = BASE64.decode(raw_b64) {
-                    attachments.push(CanonicalAttachment::new(filename, mimetype, data));
-                }
+            if let Some(att) = parse_attachment_part(part_trimmed) {
+                attachments.push(att);
             }
         }
     }
 
     (body, attachments)
+}
+
+fn parse_attachment_part(part_trimmed: &str) -> Option<CanonicalAttachment> {
+    let filename = part_trimmed.lines().find_map(|l| {
+        let lower = l.to_lowercase();
+        if lower.starts_with("content-disposition:") || lower.starts_with("content-type:") {
+            l.find("filename=\"").and_then(|s| {
+                l[s + 10..].find('"').map(|e| l[s + 10..s + 10 + e].to_string())
+            })
+        } else {
+            None
+        }
+    });
+
+    let mimetype = part_trimmed.lines().find_map(|l| {
+        if l.to_lowercase().starts_with("content-type:") {
+            let val = l["content-type:".len()..].trim();
+            let mime = val.split(';').next().unwrap_or("application/octet-stream").trim();
+            Some(mime.to_string())
+        } else {
+            None
+        }
+    }).unwrap_or_else(|| "application/octet-stream".into());
+
+    if let Some(ext_path) = extract_header(part_trimmed, "X-Attachment-External-Path") {
+        let sha256 = extract_header(part_trimmed, "X-Attachment-SHA256").unwrap_or_default();
+        let file_size = extract_header(part_trimmed, "X-Attachment-Size")
+            .and_then(|s| s.parse::<u64>().ok())
+            .unwrap_or(0);
+        return Some(CanonicalAttachment::from_external(
+            filename,
+            mimetype,
+            PathBuf::from(ext_path),
+            file_size,
+            sha256,
+        ));
+    }
+
+    let sep_pos = part_trimmed.find("\r\n\r\n").or_else(|| part_trimmed.find("\n\n"))?;
+    let raw_b64: String = part_trimmed[sep_pos..]
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect();
+    let data = BASE64.decode(raw_b64).ok()?;
+    Some(CanonicalAttachment::new(filename, mimetype, data))
 }

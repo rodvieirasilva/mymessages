@@ -30,17 +30,26 @@ impl MaildirStorage {
     }
 
     pub fn get_chat_dir(&self, source: &str, chat_id: &str) -> PathBuf {
+        self.get_chat_dir_for_account(source, "default", chat_id)
+    }
+
+    pub fn get_chat_dir_for_account(&self, source: &str, account: &str, chat_id: &str) -> PathBuf {
         let clean_source = Self::sanitize_name(source);
         let clean_chat = Self::sanitize_name(chat_id);
-        if self.root_dir.ends_with("mail") {
-            self.root_dir.join(clean_source).join(clean_chat)
+        let base = if self.root_dir.ends_with("mail") {
+            self.root_dir.join(clean_source)
         } else {
-            self.root_dir.join("mail").join(clean_source).join(clean_chat)
+            self.root_dir.join("mail").join(clean_source)
+        };
+        if account.is_empty() || account == "default" {
+            base.join(clean_chat)
+        } else {
+            base.join(Self::sanitize_name(account)).join(clean_chat)
         }
     }
 
-    pub fn init_chat_folders(&self, source: &str, chat_id: &str) -> Result<PathBuf> {
-        let chat_dir = self.get_chat_dir(source, chat_id);
+    pub fn init_chat_folders(&self, source: &str, account: &str, chat_id: &str) -> Result<PathBuf> {
+        let chat_dir = self.get_chat_dir_for_account(source, account, chat_id);
         fs::create_dir_all(chat_dir.join("tmp"))
             .with_context(|| format!("Failed to create maildir tmp in {:?}", chat_dir))?;
         fs::create_dir_all(chat_dir.join("new"))
@@ -59,7 +68,21 @@ impl MaildirStorage {
         content_hash: &str,
         eml_content: &str,
     ) -> Result<PathBuf> {
-        let chat_dir = self.init_chat_folders(source, chat_id)?;
+        self.write_message_for_account(source, "default", chat_id, message_id, timestamp, content_hash, eml_content)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn write_message_for_account(
+        &self,
+        source: &str,
+        account: &str,
+        chat_id: &str,
+        message_id: &str,
+        timestamp: i64,
+        content_hash: &str,
+        eml_content: &str,
+    ) -> Result<PathBuf> {
+        let chat_dir = self.init_chat_folders(source, account, chat_id)?;
         let clean_msg_id = Self::sanitize_name(message_id);
         let hash_prefix = if content_hash.len() >= 8 { &content_hash[..8] } else { content_hash };
         let filename = format!("{}.{}.{}.eml", timestamp, clean_msg_id, hash_prefix);
@@ -72,7 +95,6 @@ impl MaildirStorage {
         fs::rename(&tmp_path, &cur_path)
             .with_context(|| format!("Failed to move EML to {:?}", cur_path))?;
 
-        // Return path relative to base directory
         let base_dir = if self.root_dir.ends_with("mail") {
             self.root_dir.parent().unwrap_or(&self.root_dir)
         } else {
@@ -97,8 +119,9 @@ mod tests {
 
         let storage = MaildirStorage::new(&temp_dir);
         let rel_path = storage
-            .write_message(
+            .write_message_for_account(
                 "whatsapp",
+                "acct_1",
                 "chat:123/abc",
                 "msg_999",
                 1700000000,
@@ -109,6 +132,7 @@ mod tests {
 
         let full_path = temp_dir.join(&rel_path);
         assert!(full_path.exists());
+        assert!(rel_path.to_string_lossy().contains("acct_1"));
         let read_content = fs::read_to_string(&full_path).unwrap();
         assert_eq!(read_content, "Hello EML Content");
 

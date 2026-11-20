@@ -1,3 +1,4 @@
+pub mod adapter_cmd;
 pub mod handlers;
 pub mod serve;
 
@@ -39,6 +40,9 @@ pub enum Commands {
 
         #[arg(short, long)]
         source: Option<String>,
+
+        #[arg(short, long)]
+        account: Option<String>,
 
         #[arg(long)]
         chat: Option<String>,
@@ -111,15 +115,27 @@ pub enum AdapterCommands {
 
     /// Run an adapter to ingest messages
     Run {
-        /// Adapter name: 'folder' or 'evolution'
+        /// Adapter name: 'folder', 'uback', or 'evolution'
         name: String,
 
         #[arg(short, long)]
         config: Option<PathBuf>,
 
-        /// Custom path for folder adapter
+        /// Custom path for folder or uback adapter
         #[arg(long)]
         path: Option<PathBuf>,
+
+        /// Credentials file with WHATSAPP_64DIGI_<account> keys (defaults to ~/.credentials)
+        #[arg(long, env = "MYMESSAGES_CREDENTIALS_FILE")]
+        credentials: Option<PathBuf>,
+
+        /// Limit ingestion to a single account name
+        #[arg(long)]
+        account: Option<String>,
+
+        /// Index UBack media files even when no msgstore database is present yet
+        #[arg(long, default_value_t = false)]
+        index_media_without_db: bool,
     },
 }
 
@@ -151,15 +167,27 @@ mod tests {
         }
 
         let cli_search = Cli::parse_from([
-            "mymessages", "search", "invoice", "--media-type", "document", "--from-date", "2024-01-01",
+            "mymessages", "search", "invoice", "--account", "phone_a", "--media-type", "document", "--from-date", "2024-01-01",
         ]);
         match cli_search.command {
-            Commands::Search { query, media_type, from_date, .. } => {
+            Commands::Search { query, account, media_type, from_date, .. } => {
                 assert_eq!(query, "invoice");
+                assert_eq!(account, Some("phone_a".to_string()));
                 assert_eq!(media_type, Some("document".to_string()));
                 assert_eq!(from_date, Some("2024-01-01".to_string()));
             }
             _ => panic!("Expected search command"),
+        }
+
+        let cli_uback = Cli::parse_from([
+            "mymessages", "adapter", "run", "uback", "--path", "/tmp/backups", "--account", "phone_a",
+        ]);
+        match cli_uback.command {
+            Commands::Adapter { command: AdapterCommands::Run { name, account, .. } } => {
+                assert_eq!(name, "uback");
+                assert_eq!(account.as_deref(), Some("phone_a"));
+            }
+            _ => panic!("Expected adapter run command"),
         }
     }
 }

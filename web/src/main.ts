@@ -1,10 +1,12 @@
-import { fetchChatMessages, fetchChats, searchMessages } from './api';
+import { fetchAccounts, fetchChatMessages, fetchChats, searchMessages } from './api';
 import { renderFacetBar } from './facets';
+import { buildAppShell } from './layout';
 import { renderChatList, renderMessage } from './render';
 import { initTheme, toggleTheme } from './theme';
 import './style.css';
-import type { ChatSummary, SearchFilters } from './types';
+import type { AccountSummary, ChatSummary, SearchFilters } from './types';
 
+let currentAccounts: AccountSummary[] = [];
 let currentChats: ChatSummary[] = [];
 let selectedChatId: string | null = null;
 const currentFilters: SearchFilters = { query: '' };
@@ -12,40 +14,7 @@ const currentFilters: SearchFilters = { query: '' };
 async function init() {
   const initialTheme = initTheme();
   const app = document.querySelector<HTMLDivElement>('#app')!;
-  app.innerHTML = `
-    <header class="app-header">
-      <div class="logo">
-        <img src="/logo.svg" alt="mymessages" class="brand-logo" />
-        <span>mymessages</span>
-        <span class="version-badge">v0.1.0</span>
-      </div>
-      <div class="search-bar-container">
-        <input type="text" id="searchInput" data-testid="search-input" placeholder="Search text or Lucene (e.g. from:Alice after:2024-01-01)..." />
-        <button id="searchBtn" data-testid="search-button">Search</button>
-      </div>
-      <div class="header-actions">
-        <button id="themeToggleBtn" class="theme-toggle-btn" data-testid="theme-toggle-button" title="Toggle dark/light theme" aria-label="Toggle theme">
-          ${initialTheme === 'dark' ? '🌙' : '☀️'}
-        </button>
-        <a href="/swagger-ui/" target="_blank" rel="noopener" class="swagger-link" data-testid="swagger-link" title="OpenAPI & Swagger Documentation">
-          Swagger API &rarr;
-        </a>
-      </div>
-    </header>
-    <main class="app-main">
-      <aside class="sidebar">
-        <div class="sidebar-header" id="sidebarHeader" data-testid="sidebar-header">Conversations</div>
-        <div id="chatListContainer" data-testid="chat-list-container">Loading chats...</div>
-      </aside>
-      <section class="content-area">
-        <div class="content-header" id="contentHeader" data-testid="content-header">All Messages</div>
-        <div id="facetBarContainer" data-testid="facet-bar-container"></div>
-        <div class="messages-container" id="messagesContainer" data-testid="messages-container">
-          <div class="empty-state" data-testid="empty-state">Use search or select a chat from the left to view history.</div>
-        </div>
-      </section>
-    </main>
-  `;
+  app.innerHTML = buildAppShell(initialTheme);
 
   const searchInput = document.getElementById('searchInput') as HTMLInputElement;
   const searchBtn = document.getElementById('searchBtn') as HTMLButtonElement;
@@ -100,22 +69,42 @@ async function init() {
     currentFilters.media_type = mediaParam;
     currentFilters.has_media = true;
   }
+  const accountParam = urlParams.get('account');
+  if (accountParam) {
+    currentFilters.account = accountParam;
+  }
 
+  await loadAccounts();
   renderFacets();
   await loadChats();
   await runSearch();
+}
+
+async function loadAccounts() {
+  try {
+    currentAccounts = await fetchAccounts();
+  } catch {
+    currentAccounts = [];
+  }
 }
 
 function renderFacets() {
   const container = document.getElementById('facetBarContainer')!;
   container.innerHTML = '';
   container.appendChild(
-    renderFacetBar(currentFilters, (updated) => {
-      Object.assign(currentFilters, updated);
-      renderFacets();
-      loadChats();
-      runSearch();
-    }),
+    renderFacetBar(
+      currentFilters,
+      (updated) => {
+        Object.assign(currentFilters, updated);
+        if (updated.chat_id === undefined && 'account' in updated) {
+          selectedChatId = null;
+        }
+        renderFacets();
+        loadChats();
+        runSearch();
+      },
+      currentAccounts,
+    ),
   );
 }
 
@@ -123,7 +112,7 @@ async function loadChats() {
   const container = document.getElementById('chatListContainer')!;
   try {
     const q = currentFilters.query.trim();
-    currentChats = await fetchChats(currentFilters.source, q || undefined);
+    currentChats = await fetchChats(currentFilters.source, q || undefined, currentFilters.account);
     renderChats();
   } catch {
     container.innerHTML = `<div class="error-state">Failed to load chats</div>`;

@@ -1,14 +1,16 @@
 [package]
 name = "mymessages"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 
 [dependencies]
+aes-gcm = "0.10"
 anyhow = "1.0.104"
 axum = "0.8.9"
 base64 = "0.23.1"
 chrono = { version = "0.4.45", features = ["serde"] }
 clap = { version = "4.6.7", features = ["derive", "env"] }
+flate2 = "1"
 hex = "0.4.3"
 rusqlite = { version = "0.43.0", features = ["bundled", "bundled-full"] }
 serde = { version = "1.0.229", features = ["derive"] }

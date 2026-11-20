@@ -16,6 +16,7 @@ pub struct ChatMessagesQuery {
 #[derive(Debug, Deserialize)]
 pub struct ChatsFilter {
     pub source: Option<String>,
+    pub account: Option<String>,
     pub query: Option<String>,
 }
 
@@ -25,6 +26,7 @@ pub struct ChatsFilter {
     tag = "chats",
     params(
         ("source" = Option<String>, Query, description = "Filter conversations by source ID (e.g. whatsapp)"),
+        ("account" = Option<String>, Query, description = "Filter conversations by account ID"),
         ("query" = Option<String>, Query, description = "Filter conversations by name, remote ID, or message text")
     ),
     responses(
@@ -43,6 +45,7 @@ pub async fn list_chats_handler(
     let chats = list_chats(
         db.conn(),
         params.source.as_deref(),
+        params.account.as_deref(),
         params.query.as_deref(),
     ).map_err(|e| {
         (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to list chats: {}", e))
@@ -95,7 +98,7 @@ mod tests {
 
         let resp_list = list_chats_handler(
             State(state.clone()),
-            Query(ChatsFilter { source: None, query: None }),
+            Query(ChatsFilter { source: None, account: None, query: None }),
         )
         .await
         .unwrap();
@@ -103,7 +106,7 @@ mod tests {
 
         let resp_list_filter = list_chats_handler(
             State(state.clone()),
-            Query(ChatsFilter { source: Some("whatsapp".into()), query: Some("test".into()) }),
+            Query(ChatsFilter { source: Some("whatsapp".into()), account: Some("default".into()), query: Some("test".into()) }),
         )
         .await
         .unwrap();

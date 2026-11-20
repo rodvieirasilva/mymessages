@@ -55,6 +55,16 @@
   color: var(--accent);
 }
 
+.account-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(0, 168, 132, 0.16);
+  color: var(--accent);
+  border: 1px solid rgba(0, 168, 132, 0.3);
+}
+
 .message-chat-title {
   font-size: 0.75rem;
   color: var(--text-secondary);

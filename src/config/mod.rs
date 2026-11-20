@@ -1,7 +1,16 @@
+pub mod adapters;
+pub mod credentials;
+
 use std::fs;
 use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+
+pub use adapters::{
+    AdaptersConfig, EvolutionAdapterConfig, FolderAdapterConfig, UbackAdapterConfig,
+    WahaAdapterConfig,
+};
+pub use credentials::{expand_tilde, CredentialsStore};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ServerConfig {
@@ -59,68 +68,12 @@ impl StorageEntry {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct EvolutionAdapterConfig {
-    pub enabled: bool,
-    pub webhook_path: String,
-}
-
-impl Default for EvolutionAdapterConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            webhook_path: "/api/v1/webhook/evolution".into(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct FolderAdapterConfig {
-    pub enabled: bool,
-    pub folder_path: PathBuf,
-    pub file_pattern: String,
-}
-
-impl Default for FolderAdapterConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            folder_path: "./tests/test_messages".into(),
-            file_pattern: "*.json".into(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct WahaAdapterConfig {
-    pub enabled: bool,
-    pub webhook_path: String,
-    pub api_url: String,
-    pub api_key: Option<String>,
-}
-
-impl Default for WahaAdapterConfig {
-    fn default() -> Self {
-        Self {
-            enabled: true,
-            webhook_path: "/api/v1/webhook/waha".into(),
-            api_url: "http://127.0.0.1:8768".into(),
-            api_key: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
-pub struct AdaptersConfig {
-    pub evolution: EvolutionAdapterConfig,
-    pub waha: WahaAdapterConfig,
-    pub folder: Option<FolderAdapterConfig>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AppConfig {
     pub server: ServerConfig,
     pub storages: Vec<StorageEntry>,
     pub adapters: AdaptersConfig,
+    #[serde(default)]
+    pub external_media_roots: Vec<PathBuf>,
 }
 
 impl Default for AppConfig {
@@ -132,6 +85,7 @@ impl Default for AppConfig {
                 StorageEntry::new_sqlite("sqlite", "./data/messages.sqlite3"),
             ],
             adapters: AdaptersConfig::default(),
+            external_media_roots: Vec::new(),
         }
     }
 }
@@ -147,6 +101,28 @@ impl AppConfig {
 
     pub fn get_storage_path(&self, name: &str) -> Option<PathBuf> {
         self.get_storage(name).map(|s| s.path.clone())
+    }
+
+    /// Return all allowed filesystem roots from which external zero-duplication
+    /// attachments may be served safely via `/v1/attachments/{id}`.
+    pub fn allowed_media_roots(&self) -> Vec<PathBuf> {
+        let mut roots = Vec::new();
+        for p in &self.external_media_roots {
+            if !p.as_os_str().is_empty() {
+                roots.push(expand_tilde(p));
+            }
+        }
+        if let Some(ref uback) = self.adapters.uback {
+            if !uback.backup_root.as_os_str().is_empty() {
+                roots.push(expand_tilde(&uback.backup_root));
+            }
+        }
+        if let Ok(env_root) = std::env::var("MYMESSAGES_UBACK_ROOT") {
+            if !env_root.trim().is_empty() {
+                roots.push(expand_tilde(Path::new(env_root.trim())));
+            }
+        }
+        roots
     }
 
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self> {

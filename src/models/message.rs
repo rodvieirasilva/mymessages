@@ -11,10 +11,16 @@ pub struct CanonicalParticipant {
     pub phone_number: Option<String>,
 }
 
+pub fn default_account() -> String {
+    "default".to_string()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CanonicalMessage {
     pub id: String,
     pub source: String,
+    #[serde(default = "default_account")]
+    pub account: String,
     pub conversation_id: String,
     pub conversation_name: Option<String>,
     pub is_group: bool,
@@ -33,6 +39,10 @@ impl CanonicalMessage {
         let mut hasher = Sha256::new();
         hasher.update(self.source.as_bytes());
         hasher.update(b":");
+        if self.account != "default" && !self.account.is_empty() {
+            hasher.update(self.account.as_bytes());
+            hasher.update(b":");
+        }
         hasher.update(self.conversation_id.as_bytes());
         hasher.update(b":");
         hasher.update(self.id.as_bytes());
@@ -59,6 +69,7 @@ mod tests {
         let msg1 = CanonicalMessage {
             id: "msg_123".into(),
             source: "whatsapp".into(),
+            account: "default".into(),
             conversation_id: "conv_456".into(),
             conversation_name: Some("Chat".into()),
             is_group: false,
@@ -82,5 +93,9 @@ mod tests {
         let mut msg3 = msg1.clone();
         msg3.body = Some("Different body".into());
         assert_ne!(msg1.compute_content_hash(), msg3.compute_content_hash());
+
+        let mut msg4 = msg1.clone();
+        msg4.account = "acct_b".into();
+        assert_ne!(msg1.compute_content_hash(), msg4.compute_content_hash());
     }
 }

@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -53,6 +54,10 @@ pub struct CanonicalAttachment {
     pub sha256: String,
     pub media_type: MediaType,
     pub duration_seconds: Option<u32>,
+    #[serde(default)]
+    pub external_path: Option<PathBuf>,
+    #[serde(default)]
+    pub file_size: u64,
 }
 
 impl CanonicalAttachment {
@@ -61,6 +66,7 @@ impl CanonicalAttachment {
         hasher.update(&data);
         let sha256 = hex::encode(hasher.finalize());
         let media_type = MediaType::from_mimetype(&mimetype);
+        let file_size = data.len() as u64;
 
         Self {
             filename,
@@ -69,7 +75,33 @@ impl CanonicalAttachment {
             sha256,
             media_type,
             duration_seconds: None,
+            external_path: None,
+            file_size,
         }
+    }
+
+    pub fn from_external(
+        filename: Option<String>,
+        mimetype: String,
+        external_path: PathBuf,
+        file_size: u64,
+        sha256: String,
+    ) -> Self {
+        let media_type = MediaType::from_mimetype(&mimetype);
+        Self {
+            filename,
+            mimetype,
+            data: Vec::new(),
+            sha256,
+            media_type,
+            duration_seconds: None,
+            external_path: Some(external_path),
+            file_size,
+        }
+    }
+
+    pub fn is_external(&self) -> bool {
+        self.external_path.is_some()
     }
 
     pub fn with_duration(mut self, seconds: u32) -> Self {
@@ -102,6 +134,20 @@ mod tests {
         assert_eq!(att.filename.as_deref(), Some("photo.jpg"));
         assert_eq!(att.media_type, MediaType::Image);
         assert_eq!(att.duration_seconds, Some(12));
+        assert_eq!(att.file_size, data.len() as u64);
+        assert!(!att.is_external());
         assert!(!att.sha256.is_empty());
+
+        let ext = CanonicalAttachment::from_external(
+            Some("clip.mp4".into()),
+            "video/mp4".into(),
+            PathBuf::from("/backup/clip.mp4"),
+            4096,
+            "deadbeef".into(),
+        );
+        assert!(ext.is_external());
+        assert!(ext.data.is_empty());
+        assert_eq!(ext.file_size, 4096);
+        assert_eq!(ext.media_type, MediaType::Video);
     }
 }

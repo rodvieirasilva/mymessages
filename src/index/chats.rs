@@ -10,6 +10,7 @@ use crate::index::query_dsl::CompiledQuery;
 pub struct ChatSummary {
     pub id: String,
     pub source_id: String,
+    pub account_id: String,
     pub remote_id: String,
     pub name: Option<String>,
     pub is_group: bool,
@@ -21,15 +22,21 @@ pub struct ChatSummary {
 pub fn list_chats(
     conn: &Connection,
     source_filter: Option<&str>,
+    account_filter: Option<&str>,
     query_filter: Option<&str>,
 ) -> Result<Vec<ChatSummary>> {
     let clean_query = query_filter.unwrap_or("").trim();
-    let (effective_source, query_term) = if clean_query.is_empty() {
-        (source_filter.map(|s| s.to_string()), None)
+    let (effective_source, effective_account, query_term) = if clean_query.is_empty() {
+        (
+            source_filter.map(|s| s.to_string()),
+            account_filter.map(|s| s.to_string()),
+            None,
+        )
     } else {
         let mut compiled = CompiledQuery::default();
         parse_lucene_string(clean_query, &mut compiled);
         let src = source_filter.map(|s| s.to_string()).or(compiled.source);
+        let acct = account_filter.map(|s| s.to_string()).or(compiled.account);
         let term = if !compiled.text_terms.is_empty() {
             Some(compiled.text_terms.join(" "))
         } else if let Some(sender) = compiled.sender {
@@ -39,26 +46,27 @@ pub fn list_chats(
         } else {
             Some(clean_query.to_string())
         };
-        (src, term)
+        (src, acct, term)
     };
 
     let sql = "
         SELECT 
-            c.id, c.source_id, c.remote_id, c.name, c.is_group,
+            c.id, c.source_id, c.account_id, c.remote_id, c.name, c.is_group,
             count(m.id) as msg_count,
             (SELECT body FROM messages WHERE conversation_id = c.id ORDER BY timestamp DESC LIMIT 1) as last_msg,
             max(m.timestamp) as last_ts
         FROM conversations c
         LEFT JOIN messages m ON m.conversation_id = c.id
         WHERE (?1 IS NULL OR c.source_id = ?1)
-          AND (?2 IS NULL OR (
-              c.name LIKE '%' || ?2 || '%' 
-              OR c.remote_id LIKE '%' || ?2 || '%' 
+          AND (?2 IS NULL OR c.account_id = ?2)
+          AND (?3 IS NULL OR (
+              c.name LIKE '%' || ?3 || '%' 
+              OR c.remote_id LIKE '%' || ?3 || '%' 
               OR c.id IN (
                   SELECT DISTINCT m2.conversation_id 
                   FROM messages m2 
                   LEFT JOIN contacts ct ON ct.id = m2.sender_id 
-                  WHERE m2.body LIKE '%' || ?2 || '%' OR ct.display_name LIKE '%' || ?2 || '%'
+                  WHERE m2.body LIKE '%' || ?3 || '%' OR ct.display_name LIKE '%' || ?3 || '%'
               )
           ))
         GROUP BY c.id
@@ -66,18 +74,22 @@ pub fn list_chats(
     ";
 
     let mut stmt = conn.prepare(sql)?;
-    let rows = stmt.query_map([effective_source.as_deref(), query_term.as_deref()], |row| {
-        Ok(ChatSummary {
-            id: row.get(0)?,
-            source_id: row.get(1)?,
-            remote_id: row.get(2)?,
-            name: row.get(3)?,
-            is_group: row.get(4)?,
-            message_count: row.get(5)?,
-            last_message: row.get(6)?,
-            last_timestamp: row.get(7)?,
-        })
-    })?;
+    let rows = stmt.query_map(
+        [effective_source.as_deref(), effective_account.as_deref(), query_term.as_deref()],
+        |row| {
+            Ok(ChatSummary {
+                id: row.get(0)?,
+                source_id: row.get(1)?,
+                account_id: row.get(2)?,
+                remote_id: row.get(3)?,
+                name: row.get(4)?,
+                is_group: row.get(5)?,
+                message_count: row.get(6)?,
+                last_message: row.get(7)?,
+                last_timestamp: row.get(8)?,
+            })
+        },
+    )?;
 
     let mut list = Vec::new();
     for row in rows {
@@ -94,7 +106,7 @@ pub fn get_chat_messages(
 ) -> Result<Vec<SearchResult>> {
     let sql = "
         SELECT 
-            m.id, m.source_id, m.conversation_id, c.name, ct.display_name,
+            m.id, m.source_id, m.account_id, m.conversation_id, c.name, ct.display_name,
             m.timestamp, m.body, m.eml_path, m.has_attachments, m.is_from_me
         FROM messages m
         JOIN conversations c ON c.id = m.conversation_id
@@ -110,14 +122,15 @@ pub fn get_chat_messages(
         Ok(SearchResult {
             id: row.get(0)?,
             source: row.get(1)?,
-            conversation_id: row.get(2)?,
-            conversation_name: row.get(3)?,
-            sender_name: row.get(4)?,
-            timestamp: row.get(5)?,
-            body: row.get(6)?,
-            eml_path: row.get(7)?,
-            has_attachments: row.get(8)?,
-            is_from_me: row.get(9)?,
+            account: row.get(2)?,
+            conversation_id: row.get(3)?,
+            conversation_name: row.get(4)?,
+            sender_name: row.get(5)?,
+            timestamp: row.get(6)?,
+            body: row.get(7)?,
+            eml_path: row.get(8)?,
+            has_attachments: row.get(9)?,
+            is_from_me: row.get(10)?,
             snippet: None,
             attachments: Vec::new(),
         })

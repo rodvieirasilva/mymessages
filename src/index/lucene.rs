@@ -10,6 +10,7 @@ pub fn parse_lucene_string(input: &str, out: &mut CompiledQuery) {
                 "from" | "sender" => out.sender = Some(v.to_string()),
                 "chat" | "to" => out.chat_id = Some(v.to_string()),
                 "source" => out.source = Some(v.to_string()),
+                "account" | "acct" => out.account = Some(v.to_string()),
                 "type" | "media" => out.media_type = Some(v.to_string()),
                 "has" => {
                     if v == "media" || v == "attachment" || v == "file" {

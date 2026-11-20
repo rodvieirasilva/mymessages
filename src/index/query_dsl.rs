@@ -47,6 +47,7 @@ pub struct SearchRequest {
     pub from_date: Option<String>,
     pub to_date: Option<String>,
     pub source: Option<String>,
+    pub account: Option<String>,
     pub chat_id: Option<String>,
     pub sender: Option<String>,
     pub media_type: Option<String>,
@@ -62,6 +63,7 @@ pub struct SearchRequest {
 pub struct CompiledQuery {
     pub text_terms: Vec<String>,
     pub source: Option<String>,
+    pub account: Option<String>,
     pub chat_id: Option<String>,
     pub sender: Option<String>,
     pub from_timestamp: Option<i64>,
@@ -79,6 +81,7 @@ impl SearchRequest {
     pub fn compile(&self) -> CompiledQuery {
         let mut out = CompiledQuery {
             source: self.source.clone(),
+            account: self.account.clone(),
             chat_id: self.chat_id.clone(),
             sender: self.sender.clone(),
             media_type: self.media_type.clone(),
@@ -155,6 +158,7 @@ fn apply_field_term(k: &str, v: &serde_json::Value, out: &mut CompiledQuery) {
     let s = v.as_str().map(|s| s.to_string()).unwrap_or_else(|| v.to_string());
     match k {
         "source" => out.source = Some(s),
+        "account" | "acct" => out.account = Some(s),
         "chat_id" | "chat" => out.chat_id = Some(s),
         "sender" | "from" => out.sender = Some(s),
         "media_type" | "type" => out.media_type = Some(s),

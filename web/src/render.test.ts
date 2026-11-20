@@ -69,10 +69,11 @@ describe('render helpers', () => {
     expect(link?.textContent).toContain('doc.pdf');
   });
 
-  it('renders incoming and outgoing messages', () => {
+  it('renders incoming and outgoing messages with account badge', () => {
     const msg: SearchResult = {
       id: 'm1',
       source: 'whatsapp',
+      account: 'phone_a',
       conversation_id: 'c1',
       conversation_name: 'Work',
       sender_name: 'Bob',
@@ -88,17 +89,20 @@ describe('render helpers', () => {
     const el = renderMessage(msg);
     expect(el.dataset.testid).toBe('message-card');
     expect(el.querySelector('[data-testid="message-sender"]')?.textContent).toBe('Bob');
+    expect(el.querySelector('[data-testid="account-badge"]')?.textContent).toBe('phone_a');
     expect(el.classList.contains('incoming')).toBe(true);
     expect(el.textContent).toContain('Bob');
     expect(el.textContent).toContain('Hello team');
 
     const outgoingMsg: SearchResult = {
       ...msg,
+      account: 'default',
       is_from_me: true,
       snippet: '<b>Matched</b> snippet',
     };
     const outEl = renderMessage(outgoingMsg);
     expect(outEl.dataset.testid).toBe('message-card');
+    expect(outEl.querySelector('[data-testid="account-badge"]')).toBeNull();
     expect(outEl.classList.contains('outgoing')).toBe(true);
     expect(outEl.innerHTML).toContain('<b>Matched</b> snippet');
   });
@@ -107,6 +111,7 @@ describe('render helpers', () => {
     const maliciousMsg: SearchResult = {
       id: 'xss_msg',
       source: 'whatsapp',
+      account: 'default',
       conversation_id: 'c1',
       conversation_name: null,
       sender_name: 'Attacker',
@@ -135,6 +140,7 @@ describe('render helpers', () => {
       {
         id: 'c1',
         source_id: 'whatsapp',
+        account_id: 'phone_a',
         remote_id: '123@s.whatsapp.net',
         name: 'Alice',
         is_group: false,
@@ -150,6 +156,7 @@ describe('render helpers', () => {
     expect(item).not.toBeNull();
     expect(item.classList.contains('active')).toBe(true);
     expect(item.querySelector('[data-testid="chat-item-name"]')?.textContent).toBe('Alice');
+    expect(item.querySelector('[data-testid="chat-account-badge"]')?.textContent).toBe('phone_a');
     item.click();
     expect(onSelect).toHaveBeenCalledWith(chats[0]);
   });

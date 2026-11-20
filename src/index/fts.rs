@@ -33,7 +33,7 @@ pub fn search_compiled(conn: &Connection, q: &CompiledQuery) -> Result<Vec<Searc
 
     let mut sql = if has_text {
         "SELECT 
-            m.id, m.source_id, m.conversation_id, c.name, ct.display_name,
+            m.id, m.source_id, m.account_id, m.conversation_id, c.name, ct.display_name,
             m.timestamp, m.body, m.eml_path, m.has_attachments, m.is_from_me,
             snippet(messages_fts, 3, '<b>', '</b>', '...', 15) as snippet
         FROM messages_fts f
@@ -48,10 +48,11 @@ pub fn search_compiled(conn: &Connection, q: &CompiledQuery) -> Result<Vec<Searc
           AND (?6 IS NULL OR EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND a.media_type = ?6))
           AND (?7 IS NULL OR ct.display_name LIKE ?7 OR ct.remote_id LIKE ?7)
           AND (?8 IS NULL OR m.timestamp >= ?8)
-          AND (?9 IS NULL OR m.timestamp <= ?9)".to_string()
+          AND (?9 IS NULL OR m.timestamp <= ?9)
+          AND (?12 IS NULL OR m.account_id = ?12)".to_string()
     } else {
         "SELECT 
-            m.id, m.source_id, m.conversation_id, c.name, ct.display_name,
+            m.id, m.source_id, m.account_id, m.conversation_id, c.name, ct.display_name,
             m.timestamp, m.body, m.eml_path, m.has_attachments, m.is_from_me,
             NULL as snippet
         FROM messages m
@@ -64,10 +65,11 @@ pub fn search_compiled(conn: &Connection, q: &CompiledQuery) -> Result<Vec<Searc
           AND (?6 IS NULL OR EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND a.media_type = ?6))
           AND (?7 IS NULL OR ct.display_name LIKE ?7 OR ct.remote_id LIKE ?7)
           AND (?8 IS NULL OR m.timestamp >= ?8)
-          AND (?9 IS NULL OR m.timestamp <= ?9)".to_string()
+          AND (?9 IS NULL OR m.timestamp <= ?9)
+          AND (?12 IS NULL OR m.account_id = ?12)".to_string()
     };
 
-    let mut param_index = 12;
+    let mut param_index = 13;
     for _ in q.metadata_filters.iter().take(20) {
         sql.push_str(&format!(
             " AND EXISTS (SELECT 1 FROM message_metadata md WHERE md.message_id = m.id AND md.key = ?{} AND md.value = ?{})",
@@ -91,6 +93,7 @@ pub fn search_compiled(conn: &Connection, q: &CompiledQuery) -> Result<Vec<Searc
         Box::new(q.to_timestamp),
         Box::new(q.limit as i64),
         Box::new(q.offset as i64),
+        Box::new(q.account.clone()),
     ];
     for (k, v) in q.metadata_filters.iter().take(20) {
         params.push(Box::new(k.clone()));
@@ -103,15 +106,16 @@ pub fn search_compiled(conn: &Connection, q: &CompiledQuery) -> Result<Vec<Searc
         Ok(SearchResult {
             id: row.get(0)?,
             source: row.get(1)?,
-            conversation_id: row.get(2)?,
-            conversation_name: row.get(3)?,
-            sender_name: row.get(4)?,
-            timestamp: row.get(5)?,
-            body: row.get(6)?,
-            eml_path: row.get(7)?,
-            has_attachments: row.get(8)?,
-            is_from_me: row.get(9)?,
-            snippet: row.get(10)?,
+            account: row.get(2)?,
+            conversation_id: row.get(3)?,
+            conversation_name: row.get(4)?,
+            sender_name: row.get(5)?,
+            timestamp: row.get(6)?,
+            body: row.get(7)?,
+            eml_path: row.get(8)?,
+            has_attachments: row.get(9)?,
+            is_from_me: row.get(10)?,
+            snippet: row.get(11)?,
             attachments: Vec::new(),
         })
     })?;

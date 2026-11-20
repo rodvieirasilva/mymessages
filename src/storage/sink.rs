@@ -41,8 +41,9 @@ impl StorageSink for MaildirSink {
             return Ok(None);
         }
         let eml_content = build_eml(msg, content_hash);
-        let rel_path = self.storage.write_message(
+        let rel_path = self.storage.write_message_for_account(
             &msg.source,
+            &msg.account,
             &msg.conversation_id,
             &msg.id,
             msg.timestamp.timestamp(),
@@ -106,6 +107,7 @@ mod tests {
         let msg = CanonicalMessage {
             id: "sink_msg_1".into(),
             source: "whatsapp".into(),
+            account: "default".into(),
             conversation_id: "chat_1".into(),
             conversation_name: None,
             is_group: false,

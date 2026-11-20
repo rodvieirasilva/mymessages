@@ -10,6 +10,7 @@ fn test_search_and_metadata_filter() {
     let msg = CanonicalMessage {
         id: "msg_fts_1".into(),
         source: "whatsapp".into(),
+        account: "default".into(),
         conversation_id: "conv_fts".into(),
         conversation_name: Some("Test Group".into()),
         is_group: true,

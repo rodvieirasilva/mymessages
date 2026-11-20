@@ -5,7 +5,7 @@
 # mymessages
 
 [![CI](https://github.com/rodvieirasilva/mymessages/actions/workflows/ci.yml/badge.svg)](https://github.com/rodvieirasilva/mymessages/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-v0.1.0-blue.svg)](https://github.com/rodvieirasilva/mymessages/releases)
+[![Version](https://img.shields.io/badge/version-v0.2.0-blue.svg)](https://github.com/rodvieirasilva/mymessages/releases)
 [![Rust](https://img.shields.io/badge/rust-1.99.1-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-green.svg)](LICENSE)
 
@@ -18,12 +18,13 @@ A local-first, source-agnostic personal messaging vault, archiver, and search en
 ## Key Highlights
 
 - **Source Agnostic**: Core vault engine is completely decoupled from any single messaging platform.
-- **WhatsApp Ingestion (WAHA & Evolution API)**: Ingests live WhatsApp messages, attachments, audio voice notes, and documents in real time from companion containers.
-- **Maildir / RFC 5322 Single Source of Truth**: Standard EML files with multipart MIME attachments. Readable by standard email clients decades from now.
+- **WhatsApp Ingestion (WAHA, Evolution API & UBack)**: Ingests live WhatsApp messages from companion containers as well as [UBack](https://github.com/rodvieirasilva/uback) Android media & `.crypt15` backup folders with **zero media duplication** (using `WHATSAPP_64DIGI_<account>` decryption keys from env vars or credentials files).
+- **Multi-Account Cross-Search**: Index multiple devices/accounts side-by-side, search across all accounts simultaneously, or filter by account via the Web UI **Account** facet, Lucene `account:<name>`, HTTP API (`/v1/accounts`, `/v1/search?account=...`), CLI (`--account`), or MCP.
+- **Maildir / RFC 5322 Single Source of Truth**: Standard EML files with multipart MIME attachments (or zero-duplication external attachment references). Readable by standard email clients decades from now.
 - **Fast Full-Text Search (SQLite FTS5)**: BM25 relevance ranking, highlighted match snippets, and instant queries across text and attachments.
 - **Cryptographic Deduplication**: Deterministic SHA-256 content hashing guarantees no duplicate messages or files are ever stored twice.
-- **Super-Indexed Metadata & Elasticsearch JSON Query DSL**: Automatically extracts and indexes arbitrary metadata key-values into SQLite `message_metadata` and FTS5. Supports complex Lucene string queries (`from:`, `after:`, `before:`, `type:`, `meta.*:`) and the safe IETF HTTP **`QUERY`** / **`POST`** methods with Elasticsearch JSON Query DSL bodies (`bool`, `must`, `filter`, `range`).
-- **Search Web UI with Dynamic Facets**: Lightweight, responsive Vite + TypeScript frontend with instant filtering by Source, Media Type (Images, Audio, Docs, Videos), and Direction.
+- **Super-Indexed Metadata & Elasticsearch JSON Query DSL**: Automatically extracts and indexes arbitrary metadata key-values into SQLite `message_metadata` and FTS5. Supports complex Lucene string queries (`from:`, `account:`, `after:`, `before:`, `type:`, `meta.*:`) and the safe IETF HTTP **`QUERY`** / **`POST`** methods with Elasticsearch JSON Query DSL bodies (`bool`, `must`, `filter`, `range`).
+- **Search Web UI with Dynamic Facets**: Lightweight, responsive Vite + TypeScript frontend with instant filtering by Account, Source, Media Type (Images, Audio, Docs, Videos), and Direction.
 - **Native Model Context Protocol (MCP)**: Built-in `mymessages mcp` server over `stdio` allowing AI assistants (Claude Desktop, Cursor, Antigravity) to search and retrieve historical context.
 - **Versioned API & Swagger UI**: OpenAPI 3.1 schema and interactive Swagger UI served out-of-the-box at `http://localhost:8765/swagger-ui/` with `/v1/` versioned routes.
 - **Zero-Loss Rebuilding**: The SQLite database can be erased and completely re-indexed from the Maildir archive at any moment.
@@ -36,8 +37,9 @@ A local-first, source-agnostic personal messaging vault, archiver, and search en
 ```mermaid
 flowchart TD
     subgraph Sources["Message Sources"]
-        WA_EVO["Evolution API (WhatsApp)"]
-        WA_WAHA["WAHA (WhatsApp HTTP API)"]
+        UBACK["UBack (Historical Media + Deltas / .crypt15)"]
+        WA_EVO["Evolution API (Real-Time WhatsApp)"]
+        WA_WAHA["WAHA (Real-Time WhatsApp HTTP API)"]
         LOCAL_DIR["Local Folder Adapter"]
     end
 
@@ -57,9 +59,10 @@ flowchart TD
         WEB["Vite Search UI with Facets (:8765)"]
         SWAGGER["Swagger UI (/swagger-ui/)"]
         MCP["Model Context Protocol (mymessages mcp)"]
-        AI["AI Assistants (Claude / Cursor)"]
+        AI["AI Assistants (Claude / Cursor / Antigravity)"]
     end
 
+    UBACK -->|adapter run uback (zero media dup)| PIPELINE
     WA_EVO -->|POST /v1/webhook/evolution| ROUTER
     WA_WAHA -->|POST /v1/webhook/waha| ROUTER
     LOCAL_DIR -->|reindex / adapter run| PIPELINE
@@ -72,6 +75,29 @@ flowchart TD
     SQLITE --> SWAGGER
     SQLITE --> MCP
     MCP --> AI
+```
+
+---
+
+## Choosing Your WhatsApp Ingestion Strategy
+
+`mymessages` supports two complementary WhatsApp ingestion paths — and you can use **both together** with automatic SHA-256 deduplication:
+
+| Method | Best For | Why Use It |
+| :--- | :--- | :--- |
+| **[UBack](https://github.com/rodvieirasilva/uback) *(Recommended for Historical Backups)*** | Years of existing WhatsApp & WhatsApp Business history across multiple phones/accounts | Backs up your full historical chat archive via incremental SQLite deltas (`deltas/`) or encrypted `.crypt15` databases (`databases/`) plus media (`received/` & `sent/`) with **zero media duplication** — `mymessages` streams media directly from your UBack backup folder. |
+| **WAHA / Evolution API *(Real-Time Webhooks)*** | Live, continuous capture of incoming & outgoing messages | Captures every message in real time and automatically downloads **full attachments immediately — even if you never download them on your phone** (and even if a sender later deletes them). |
+
+### Syncing Multi-Account UBack Backups
+Provide each account's 64-digit WhatsApp encryption key via environment variable (`WHATSAPP_64DIGI_<account>`) or a local gitignored credentials file (`~/.credentials` or `MYMESSAGES_CREDENTIALS_FILE`):
+
+```bash
+# Auto-discover all device/account folders under your UBack backup root (zero media duplication)
+mymessages adapter run uback --path /path/to/uback/phone-backups
+
+# Search across all accounts, or narrow to one account
+mymessages search "contract"
+mymessages search "contract account:personal"
 ```
 
 ---
@@ -124,7 +150,7 @@ mise run dev
 The UI uses CSS custom property tokens for instant theme customization and switching:
 - **Dark & Light Modes**: Switch themes live using the 🌙/☀️ button in the header, or via URL query parameter (`?theme=dark` or `?theme=light`).
 - **Persistent Preferences**: Stores preference in `localStorage` and automatically defaults to your OS preference (`prefers-color-scheme`).
-- **Design Tokens**: Defined in `web/src/style.css` under `[data-theme="dark"]` and `[data-theme="light"]`:
+- **Design Tokens**: Defined in `web/src/styles/tokens.css` under `[data-theme="dark"]` and `[data-theme="light"]`:
   - `--bg-primary`, `--bg-secondary`, `--bg-card`: Surface levels.
   - `--bg-outgoing`: Chat bubble background for sent messages (`#005c4b` in dark, `#d9fdd3` in light).
   - `--accent`: Emerald branding accent (`#00a884` in dark, `#008069` in light).
@@ -146,14 +172,14 @@ Static screenshots are saved to `docs/assets/screenshot-dark.png` and `docs/asse
 
 ## Configuration (`mymessages.toml`)
 
-All ports, paths, adapters, and storages are fully configurable:
+All ports, paths, adapters, and storages are fully configurable (with environment variable overrides such as `MYMESSAGES_HOST`, `MYMESSAGES_PORT`, `MYMESSAGES_DATA_DIR`, `MYMESSAGES_UBACK_ROOT`, `MYMESSAGES_CREDENTIALS_FILE`, and `WHATSAPP_64DIGI_<account>`):
 
 ```toml
 [server]
-host = "0.0.0.0"
+host = "127.0.0.1"
 port = 8765
 static_dir = "./web/dist"
-cors_allowed_origins = ["*"]
+cors_allowed_origins = ["http://localhost:8765", "http://127.0.0.1:8765"]
 
 [[storages]]
 name = "maildir"
@@ -180,6 +206,15 @@ api_url = "http://127.0.0.1:8768"
 enabled = true
 folder_path = "./tests/test_messages"
 file_pattern = "*.json"
+
+# UBack Android Backup Adapter (zero-duplication media + deltas / .crypt15)
+# Keys are loaded automatically from env vars `WHATSAPP_64DIGI_<account>` or `credentials_file`
+[adapters.uback]
+enabled = false
+backup_root = ""
+# credentials_file = "~/.credentials"
+accounts = []
+index_media_without_db = false
 ```
 
 ---

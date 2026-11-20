@@ -108,7 +108,7 @@ mod tests {
         };
         let resp = handle_request(&db, &tools_req).unwrap();
         let tools = resp.result.unwrap()["tools"].as_array().unwrap().clone();
-        assert_eq!(tools.len(), 4);
+        assert_eq!(tools.len(), 5);
         assert_eq!(tools[0]["name"], "search_messages");
 
         // 3. Call tool search_messages

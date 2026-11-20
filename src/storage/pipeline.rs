@@ -105,6 +105,7 @@ mod tests {
         let msg = CanonicalMessage {
             id: "pipe_1".into(),
             source: "whatsapp".into(),
+            account: "default".into(),
             conversation_id: "c1".into(),
             conversation_name: None,
             is_group: false,

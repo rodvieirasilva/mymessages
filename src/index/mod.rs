@@ -1,3 +1,4 @@
+pub mod accounts;
 pub mod chats;
 pub mod db;
 pub mod fts;
@@ -9,6 +10,7 @@ pub mod reindex;
 pub mod search_models;
 pub mod writer;
 
+pub use accounts::{list_accounts, AccountSummary};
 pub use chats::{get_chat_messages, list_chats, ChatSummary};
 pub use db::Database;
 pub use fts::{get_message_attachments, search_compiled, search_messages, AttachmentInfo, SearchQuery, SearchResult};

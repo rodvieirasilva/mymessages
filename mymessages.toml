@@ -33,3 +33,12 @@ api_url = "http://127.0.0.1:8768"
 enabled = true
 folder_path = "./tests/test_messages"
 file_pattern = "*.json"
+
+# UBack Android Backup Adapter (zero-duplication media + .crypt15 decryption)
+# Keys are loaded automatically from env vars `WHATSAPP_64DIGI_<account>` or `credentials_file`
+[adapters.uback]
+enabled = false
+backup_root = ""
+# credentials_file = "~/.credentials"
+accounts = []
+index_media_without_db = false

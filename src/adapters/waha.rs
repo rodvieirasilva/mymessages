@@ -108,9 +108,17 @@ impl SourceAdapter for WahaAdapter {
             notify_name.map(|n| n.to_string())
         };
 
+        let account = payload
+            .get("session")
+            .and_then(|s| s.as_str())
+            .filter(|s| !s.is_empty())
+            .unwrap_or("default")
+            .to_string();
+
         Ok(Some(CanonicalMessage {
             id: msg_id,
             source: self.source_id().to_string(),
+            account,
             conversation_id,
             conversation_name: conv_name,
             sender,

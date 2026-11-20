@@ -3,10 +3,12 @@ use crate::models::CanonicalMessage;
 
 pub mod evolution;
 pub mod folder;
+pub mod uback;
 pub mod waha;
 
 pub use evolution::EvolutionApiAdapter;
 pub use folder::FolderAdapter;
+pub use uback::UbackAdapter;
 pub use waha::WahaAdapter;
 
 pub trait SourceAdapter: Send + Sync {

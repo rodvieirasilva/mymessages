@@ -7,6 +7,7 @@ pub struct SearchQuery {
     #[serde(default)]
     pub query: String,
     pub source: Option<String>,
+    pub account: Option<String>,
     pub chat_id: Option<String>,
     pub has_media: Option<bool>,
     pub media_type: Option<String>,
@@ -19,6 +20,7 @@ impl SearchQuery {
     pub fn to_compiled(&self) -> CompiledQuery {
         let mut compiled = CompiledQuery {
             source: self.source.clone(),
+            account: self.account.clone(),
             chat_id: self.chat_id.clone(),
             has_media: self.has_media,
             media_type: self.media_type.clone(),
@@ -45,6 +47,7 @@ pub struct AttachmentInfo {
 pub struct SearchResult {
     pub id: String,
     pub source: String,
+    pub account: String,
     pub conversation_id: String,
     pub conversation_name: Option<String>,
     pub sender_name: Option<String>,

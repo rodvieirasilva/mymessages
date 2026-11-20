@@ -12,8 +12,9 @@ use crate::index::{search_compiled, SearchQuery, SearchRequest, SearchResult};
     path = "/v1/search",
     tag = "search",
     params(
-        ("query" = Option<String>, Query, description = "Lucene query string (e.g. 'contract from:Alice after:2024-01-01')"),
+        ("query" = Option<String>, Query, description = "Lucene query string (e.g. 'contract from:Alice account:phone_a after:2024-01-01')"),
         ("source" = Option<String>, Query, description = "Filter by source (e.g. whatsapp)"),
+        ("account" = Option<String>, Query, description = "Filter by account ID (omit to search across all accounts)"),
         ("chat_id" = Option<String>, Query, description = "Filter by conversation ID"),
         ("has_media" = Option<bool>, Query, description = "Filter messages that contain attachments"),
         ("media_type" = Option<String>, Query, description = "Filter by media type (image, audio, video, document)"),

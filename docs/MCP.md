@@ -19,7 +19,8 @@ Full-text search using SQLite FTS5, Lucene query syntax, or Elasticsearch-style 
 - `query_dsl` *(object, optional)*: Elasticsearch JSON Query DSL object (`{"bool": {"must": [...], "filter": [...]}}`).
 - `from_date` / `to_date` *(string, optional)*: Date filters (e.g. `"2024-01-01"`).
 - `sender` *(string, optional)*: Filter by sender name or phone/JID.
-- `source` *(string, optional)*: Filter by adapter source (e.g. `"whatsapp"`).
+- `source` *(string, optional)*: Filter by adapter source (e.g. `"whatsapp"`, `"whatsapp_business"`).
+- `account` *(string, optional)*: Filter by account ID (omit to search across all accounts).
 - `chat_id` *(string, optional)*: Restrict search to a specific conversation ID.
 - `has_media` *(boolean, optional)*: Restrict to messages with attachments.
 - `media_type` *(string, optional)*: Filter by media type (`"image"`, `"audio"`, `"document"`).
@@ -27,9 +28,13 @@ Full-text search using SQLite FTS5, Lucene query syntax, or Elasticsearch-style 
 - `metadata` *(object, optional)*: Key-value map of arbitrary metadata filters.
 - `limit` *(integer, optional)*: Maximum results (default: 20, max: 100).
 
+#### `list_accounts`
+List all indexed accounts with source lists, message counts, and chat counts.
+
 #### `list_chats`
 List conversations and group chats with message counts and last activity.
 - `source` *(string, optional)*: Filter by source (e.g. `"whatsapp"`).
+- `account` *(string, optional)*: Filter by account ID.
 - `query` *(string, optional)*: Filter by contact name, phone/remote_id, or message text.
 
 #### `get_chat_history`

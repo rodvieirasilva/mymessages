@@ -1,3 +1,4 @@
+pub mod accounts;
 pub mod attachments;
 pub mod chats;
 pub mod health;
@@ -36,6 +37,7 @@ pub fn create_router(state: AppState, static_dir: Option<PathBuf>) -> Router {
 
     let api_routes = Router::new()
         .route("/health", get(health::health_handler))
+        .route("/accounts", get(accounts::list_accounts_handler))
         .route("/search", any(search::search_unified_handler))
         .route("/chats", get(chats::list_chats_handler))
         .route("/chats/{id}/messages", get(chats::get_chat_messages_handler))

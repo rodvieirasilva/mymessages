@@ -1,4 +1,4 @@
-import type { SearchFilters } from './types';
+import type { AccountSummary, SearchFilters } from './types';
 
 export interface FacetOption {
   label: string;
@@ -14,6 +14,7 @@ export function renderFacetPills(
   const container = document.createElement('div');
   container.className = 'facet-group';
   container.dataset.testid = 'facet-group';
+  container.setAttribute('data-facet-group', groupName.toLowerCase());
 
   const label = document.createElement('span');
   label.className = 'facet-group-label';
@@ -42,24 +43,46 @@ export function renderFacetPills(
 export function renderFacetBar(
   filters: SearchFilters,
   onChange: (updated: Partial<SearchFilters>) => void,
+  accounts: AccountSummary[] = [],
 ): HTMLElement {
   const bar = document.createElement('div');
   bar.className = 'search-facets-bar';
   bar.dataset.testid = 'search-facets-bar';
 
-  // 1. Source facet
+  // 1. Account facet (enables cross-account or single-account search)
+  const accountOptions: FacetOption[] = [{ label: 'All Accounts', value: undefined }];
+  const seenAccounts = new Set<string>();
+  for (const acct of accounts) {
+    seenAccounts.add(acct.id);
+    accountOptions.push({ label: acct.name, value: acct.id });
+  }
+  if (filters.account && !seenAccounts.has(filters.account)) {
+    accountOptions.push({ label: filters.account, value: filters.account });
+  }
+  bar.appendChild(
+    renderFacetPills('Account', accountOptions, filters.account, (val) => {
+      onChange({ account: val, chat_id: undefined });
+    }),
+  );
+
+  // 2. Source facet
   const sourceOptions: FacetOption[] = [
     { label: 'All Sources', value: undefined },
     { label: 'WhatsApp', value: 'whatsapp' },
     { label: 'Folder', value: 'folder' },
   ];
+  const hasWaBusiness = accounts.some((a) => a.sources.includes('whatsapp_business'))
+    || filters.source === 'whatsapp_business';
+  if (hasWaBusiness) {
+    sourceOptions.splice(2, 0, { label: 'WhatsApp Business', value: 'whatsapp_business' });
+  }
   bar.appendChild(
     renderFacetPills('Source', sourceOptions, filters.source, (val) => {
       onChange({ source: val });
     }),
   );
 
-  // 2. Media Type facet
+  // 3. Media Type facet
   const mediaOptions: FacetOption[] = [
     { label: 'All Types', value: undefined },
     { label: '🖼️ Images', value: 'image' },
@@ -73,7 +96,7 @@ export function renderFacetBar(
     }),
   );
 
-  // 3. Direction facet
+  // 4. Direction facet
   const currentDirection = filters.is_from_me === undefined
     ? undefined
     : filters.is_from_me ? 'outgoing' : 'incoming';

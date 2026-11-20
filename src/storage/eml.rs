@@ -8,6 +8,7 @@ pub fn build_eml(msg: &CanonicalMessage, content_hash: &str) -> String {
     let boundary = format!("==_mymessages_{}_==", msg.id.replace(['<', '>', '@', ' '], "_"));
     let mut out = String::new();
 
+    let account = if msg.account.is_empty() { "default" } else { msg.account.as_str() };
     let sender_name = msg.sender.name.as_deref().unwrap_or("Unknown");
     let sender_addr = format!("{}@{}.mymessages.local", msg.sender.id, msg.source);
     let subject = msg.conversation_name.as_deref().unwrap_or("Chat message");
@@ -18,6 +19,7 @@ pub fn build_eml(msg: &CanonicalMessage, content_hash: &str) -> String {
     out.push_str(&format!("Subject: {}\r\n", subject));
     out.push_str("MIME-Version: 1.0\r\n");
     out.push_str(&format!("X-MyMessages-Source: {}\r\n", msg.source));
+    out.push_str(&format!("X-MyMessages-Account: {}\r\n", account));
     out.push_str(&format!("X-MyMessages-Chat-ID: {}\r\n", msg.conversation_id));
     out.push_str(&format!("X-MyMessages-Message-ID: {}\r\n", msg.id));
     out.push_str(&format!("X-MyMessages-Sender-ID: {}\r\n", msg.sender.id));
@@ -57,23 +59,27 @@ pub fn build_eml(msg: &CanonicalMessage, content_hash: &str) -> String {
         out.push_str(msg.body.as_deref().unwrap_or(""));
         out.push_str("\r\n\r\n");
 
-        // Attachment parts
+        // Attachment parts (inline base64 or zero-duplication external reference)
         for att in &msg.attachments {
             let fname = att.filename.as_deref().unwrap_or("attachment.bin");
-            let b64_data = BASE64.encode(&att.data);
-
             out.push_str(&format!("--{}\r\n", boundary));
             out.push_str(&format!("Content-Type: {}; name=\"{}\"\r\n", att.mimetype, fname));
             out.push_str(&format!("Content-Disposition: attachment; filename=\"{}\"\r\n", fname));
-            out.push_str("Content-Transfer-Encoding: base64\r\n");
-            out.push_str(&format!("X-Attachment-SHA256: {}\r\n\r\n", att.sha256));
+            out.push_str(&format!("X-Attachment-SHA256: {}\r\n", att.sha256));
 
-            // Chunk base64 lines for RFC compliance
-            for chunk in b64_data.as_bytes().chunks(76) {
-                out.push_str(std::str::from_utf8(chunk).unwrap_or(""));
+            if let Some(ref ext_path) = att.external_path {
+                out.push_str(&format!("X-Attachment-External-Path: {}\r\n", ext_path.to_string_lossy()));
+                out.push_str(&format!("X-Attachment-Size: {}\r\n\r\n", att.file_size));
+                out.push_str("\r\n");
+            } else {
+                out.push_str("Content-Transfer-Encoding: base64\r\n\r\n");
+                let b64_data = BASE64.encode(&att.data);
+                for chunk in b64_data.as_bytes().chunks(76) {
+                    out.push_str(std::str::from_utf8(chunk).unwrap_or(""));
+                    out.push_str("\r\n");
+                }
                 out.push_str("\r\n");
             }
-            out.push_str("\r\n");
         }
 
         out.push_str(&format!("--{}--\r\n", boundary));
@@ -85,6 +91,7 @@ pub fn build_eml(msg: &CanonicalMessage, content_hash: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
     use crate::models::{CanonicalAttachment, CanonicalParticipant};
     use chrono::Utc;
 
@@ -93,14 +100,11 @@ mod tests {
         let msg = CanonicalMessage {
             id: "msg_1".into(),
             source: "whatsapp".into(),
+            account: "alice_phone".into(),
             conversation_id: "conv_1".into(),
             conversation_name: Some("My Group".into()),
             is_group: true,
-            sender: CanonicalParticipant {
-                id: "user_1".into(),
-                name: Some("Alice".into()),
-                phone_number: None,
-            },
+            sender: CanonicalParticipant { id: "user_1".into(), name: Some("Alice".into()), phone_number: None },
             recipients: vec![],
             timestamp: Utc::now(),
             body: Some("Simple text".into()),
@@ -112,28 +116,33 @@ mod tests {
 
         let eml = build_eml(&msg, "hash123");
         assert!(eml.contains("Message-ID: <msg_1@whatsapp.mymessages.local>"));
+        assert!(eml.contains("X-MyMessages-Account: alice_phone"));
         assert!(eml.contains("X-MyMessages-SHA256: hash123"));
         assert!(eml.contains("Simple text"));
     }
 
     #[test]
-    fn test_build_eml_with_attachments() {
-        let att = CanonicalAttachment::new(Some("test.jpg".into()), "image/jpeg".into(), b"imagebytes".to_vec());
+    fn test_build_eml_with_inline_and_external_attachments() {
+        let att_inline = CanonicalAttachment::new(Some("test.jpg".into()), "image/jpeg".into(), b"imagebytes".to_vec());
+        let att_ext = CanonicalAttachment::from_external(
+            Some("video.mp4".into()),
+            "video/mp4".into(),
+            PathBuf::from("/backup/acct/whatsapp/received/videos/2025/01/video.mp4"),
+            98765,
+            "sha256ext".into(),
+        );
         let msg = CanonicalMessage {
             id: "msg_2".into(),
             source: "whatsapp".into(),
+            account: "default".into(),
             conversation_id: "conv_2".into(),
             conversation_name: None,
             is_group: false,
-            sender: CanonicalParticipant {
-                id: "user_2".into(),
-                name: None,
-                phone_number: None,
-            },
+            sender: CanonicalParticipant { id: "user_2".into(), name: None, phone_number: None },
             recipients: vec![],
             timestamp: Utc::now(),
             body: Some("Photo caption".into()),
-            attachments: vec![att],
+            attachments: vec![att_inline, att_ext],
             reply_to_id: None,
             is_from_me: true,
             raw_payload: serde_json::json!({}),
@@ -142,6 +151,8 @@ mod tests {
         let eml = build_eml(&msg, "hash456");
         assert!(eml.contains("multipart/mixed"));
         assert!(eml.contains("name=\"test.jpg\""));
+        assert!(eml.contains("X-Attachment-External-Path: /backup/acct/whatsapp/received/videos/2025/01/video.mp4"));
+        assert!(eml.contains("X-Attachment-Size: 98765"));
         assert!(eml.contains("X-MyMessages-Direction: outgoing"));
     }
 }

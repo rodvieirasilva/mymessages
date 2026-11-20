@@ -3,9 +3,10 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use anyhow::Result;
 
-use crate::cli::{AdapterCommands, Commands, StorageCommands};
+use crate::cli::adapter_cmd::execute_adapter_command;
+use crate::cli::{Commands, StorageCommands};
 use crate::config::AppConfig;
-use crate::index::{reindex_from_folder, reindex_from_maildir, search_compiled, Database, SearchQuery};
+use crate::index::{list_accounts, reindex_from_folder, reindex_from_maildir, search_compiled, Database, SearchQuery};
 use crate::mcp::run_mcp_server;
 use crate::storage::{MaildirStorage, StoragePipeline};
 
@@ -19,6 +20,7 @@ pub async fn execute_command(command: Commands) -> Result<()> {
             query,
             config,
             source,
+            account,
             chat,
             has_media,
             media_type,
@@ -38,6 +40,7 @@ pub async fn execute_command(command: Commands) -> Result<()> {
             let mut compiled = SearchQuery {
                 query,
                 source,
+                account,
                 chat_id: chat,
                 has_media,
                 media_type,
@@ -60,7 +63,7 @@ pub async fn execute_command(command: Commands) -> Result<()> {
                     .unwrap_or_default();
                 let sender = r.sender_name.as_deref().unwrap_or("Unknown");
                 let chat_name = r.conversation_name.as_deref().unwrap_or("Chat");
-                println!("[{}] {} in {}: {}", ts, sender, chat_name, r.body.as_deref().unwrap_or(""));
+                println!("[{}][{}] {} in {}: {}", ts, r.account, sender, chat_name, r.body.as_deref().unwrap_or(""));
                 if let Some(snip) = r.snippet {
                     println!("   Match: {}", snip);
                 }
@@ -99,52 +102,9 @@ pub async fn execute_command(command: Commands) -> Result<()> {
             println!("Duplicates skipped:   {}", report.duplicates_skipped);
         }
 
-        Commands::Adapter { command } => match command {
-            AdapterCommands::List { config } => {
-                let cfg = AppConfig::load_or_default(config.as_deref());
-                println!("=== Configured Ingestion Adapters ===");
-                println!("1. Evolution API (WhatsApp):");
-                println!("   - Enabled:      {}", cfg.adapters.evolution.enabled);
-                println!("   - Webhook Path: {}", cfg.adapters.evolution.webhook_path);
-                println!("2. WAHA (WhatsApp HTTP API):");
-                println!("   - Enabled:      {}", cfg.adapters.waha.enabled);
-                println!("   - Webhook Path: {}", cfg.adapters.waha.webhook_path);
-                println!("   - API URL:      {}", cfg.adapters.waha.api_url);
-                if let Some(folder_cfg) = &cfg.adapters.folder {
-                    println!("3. Folder Adapter:");
-                    println!("   - Enabled:      {}", folder_cfg.enabled);
-                    println!("   - Folder Path:  {:?}", folder_cfg.folder_path);
-                    println!("   - Pattern:      {}", folder_cfg.file_pattern);
-                }
-            }
-            AdapterCommands::Run { name, config, path } => {
-                let cfg = AppConfig::load_or_default(config.as_deref());
-                let base_data_dir = PathBuf::from("./data");
-                fs::create_dir_all(&base_data_dir)?;
-                let db_path = cfg.get_storage_path("sqlite").unwrap_or_else(|| base_data_dir.join("messages.sqlite3"));
-                let mail_path = cfg.get_storage_path("maildir").unwrap_or_else(|| base_data_dir.join("mail"));
-
-                let db = Database::open(&db_path)?;
-                let db_arc = Arc::new(Mutex::new(db));
-                let storage_arc = Arc::new(MaildirStorage::new(&mail_path));
-                let pipeline = StoragePipeline::from_config(&cfg, db_arc, storage_arc);
-
-                if name == "folder" {
-                    if let Some(folder_cfg) = &cfg.adapters.folder {
-                        if !folder_cfg.enabled && path.is_none() {
-                            println!("Notice: Folder adapter is disabled in configuration, running anyway via CLI command.");
-                        }
-                    }
-                    let folder_path = path.or_else(|| cfg.adapters.folder.as_ref().map(|f| f.folder_path.clone()))
-                        .unwrap_or_else(|| PathBuf::from("./tests/test_messages"));
-                    println!("Running folder adapter on {:?}...", folder_path);
-                    let report = reindex_from_folder(&pipeline, &folder_path)?;
-                    println!("Ingested {} messages ({} skipped).", report.newly_indexed, report.duplicates_skipped);
-                } else {
-                    println!("Adapter '{}' is an event-driven webhook adapter. Start with 'serve' to receive webhooks.", name);
-                }
-            }
-        },
+        Commands::Adapter { command } => {
+            execute_adapter_command(command)?;
+        }
 
         Commands::Storage { command } => match command {
             StorageCommands::List { config } => {
@@ -169,11 +129,16 @@ pub async fn execute_command(command: Commands) -> Result<()> {
             let total_msgs: i64 = db.conn().query_row("SELECT count(*) FROM messages", [], |r| r.get(0))?;
             let total_chats: i64 = db.conn().query_row("SELECT count(*) FROM conversations", [], |r| r.get(0))?;
             let total_atts: i64 = db.conn().query_row("SELECT count(*) FROM attachments", [], |r| r.get(0))?;
+            let accounts = list_accounts(db.conn())?;
 
             println!("=== mymessages Vault Statistics ===");
             println!("Total Messages:    {}", total_msgs);
             println!("Total Chats:       {}", total_chats);
             println!("Total Attachments: {}", total_atts);
+            println!("Accounts ({}):", accounts.len());
+            for a in accounts {
+                println!("  - {} ({} msgs, {} chats, sources: {:?})", a.id, a.message_count, a.chat_count, a.sources);
+            }
         }
 
         Commands::Mcp { config, data_dir } => {

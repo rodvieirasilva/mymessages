@@ -78,6 +78,13 @@ export function renderMessage(msg: SearchResult): HTMLElement {
   time.textContent = formatDate(msg.timestamp);
 
   header.appendChild(sender);
+  if (msg.account && msg.account !== 'default') {
+    const badge = document.createElement('span');
+    badge.className = 'account-badge';
+    badge.dataset.testid = 'account-badge';
+    badge.textContent = msg.account;
+    header.appendChild(badge);
+  }
   header.appendChild(time);
   card.appendChild(header);
 
@@ -141,7 +148,10 @@ export function renderChatList(
 
     const meta = document.createElement('div');
     meta.className = 'chat-item-meta';
-    meta.innerHTML = `<span>${chat.message_count} msgs</span><span>${formatDate(chat.last_timestamp || 0)}</span>`;
+    const acctPart = chat.account_id && chat.account_id !== 'default'
+      ? `<span class="account-badge" data-testid="chat-account-badge">${escapeHtml(chat.account_id)}</span>`
+      : '';
+    meta.innerHTML = `<span>${chat.message_count} msgs</span>${acctPart}<span>${formatDate(chat.last_timestamp || 0)}</span>`;
 
     item.appendChild(name);
     item.appendChild(meta);

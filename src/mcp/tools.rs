@@ -1,22 +1,23 @@
 use serde_json::{json, Value};
-use crate::index::{get_chat_messages, list_chats, search_compiled, Database, SearchRequest};
+use crate::index::{get_chat_messages, list_accounts, list_chats, search_compiled, Database, SearchRequest};
 use super::protocol::{McpCallToolResult, McpTool};
 
 pub fn get_available_tools() -> Vec<McpTool> {
     vec![
         McpTool {
             name: "search_messages".into(),
-            description: "Search messages in the vault using SQLite FTS5, Lucene query syntax, or Elasticsearch JSON Query DSL. Supports date ranges, sender filters, media types, and arbitrary metadata.".into(),
+            description: "Search messages across accounts in the vault using SQLite FTS5, Lucene query syntax, or Elasticsearch JSON Query DSL.".into(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
-                    "query": { "type": "string", "description": "Search keyword or Lucene query (e.g. 'contract from:Alice after:2024-01-01 type:document meta.session:default')" },
-                    "query_dsl": { "type": "object", "description": "Optional Elasticsearch-style JSON Query DSL object (e.g. {'bool': {'must': [...], 'filter': [...]}})" },
+                    "query": { "type": "string", "description": "Search keyword or Lucene query (e.g. 'contract from:Alice account:phone_a after:2024-01-01')" },
+                    "query_dsl": { "type": "object", "description": "Optional Elasticsearch-style JSON Query DSL object" },
                     "from_date": { "type": "string", "description": "Filter on or after this date (ISO-8601 or YYYY-MM-DD)" },
                     "to_date": { "type": "string", "description": "Filter on or before this date (ISO-8601 or YYYY-MM-DD)" },
                     "sender": { "type": "string", "description": "Filter by sender name or ID" },
                     "chat_id": { "type": "string", "description": "Optional conversation ID or remote JID" },
-                    "source": { "type": "string", "description": "Source filter: 'whatsapp', 'folder', etc." },
+                    "source": { "type": "string", "description": "Source filter: 'whatsapp', 'whatsapp_business', 'folder', etc." },
+                    "account": { "type": "string", "description": "Optional account ID filter (omit to search across all accounts)" },
                     "has_media": { "type": "boolean", "description": "Filter messages with attachments" },
                     "media_type": { "type": "string", "description": "Filter by media type: 'image', 'audio', 'document', 'video'" },
                     "is_from_me": { "type": "boolean", "description": "true for outgoing, false for incoming" },
@@ -26,12 +27,18 @@ pub fn get_available_tools() -> Vec<McpTool> {
             }),
         },
         McpTool {
+            name: "list_accounts".into(),
+            description: "List all indexed messaging accounts in the vault with message and conversation counts.".into(),
+            input_schema: json!({ "type": "object", "properties": {} }),
+        },
+        McpTool {
             name: "list_chats".into(),
-            description: "List conversations and group chats in the vault with metadata including participant names, message counts, and last activity.".into(),
+            description: "List conversations and group chats in the vault with metadata including account, participant names, message counts, and last activity.".into(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
                     "source": { "type": "string", "description": "Optional source filter (e.g. 'whatsapp')" },
+                    "account": { "type": "string", "description": "Optional account filter" },
                     "query": { "type": "string", "description": "Optional query filter matching contact name, ID, or message text" }
                 }
             }),
@@ -51,7 +58,7 @@ pub fn get_available_tools() -> Vec<McpTool> {
         },
         McpTool {
             name: "get_attachment_info".into(),
-            description: "Retrieve metadata, MIME type, SHA-256 hash, and Maildir EML path for an attachment.".into(),
+            description: "Retrieve metadata, MIME type, SHA-256 hash, and storage path for an attachment.".into(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
@@ -67,7 +74,6 @@ pub fn execute_tool(db: &Database, name: &str, args: &Value) -> McpCallToolResul
     match name {
         "search_messages" => {
             let limit = args.get("limit").and_then(|l| l.as_u64()).map(|u| u as usize).unwrap_or(20);
-
             let mut req = if let Some(dsl) = args.get("query_dsl") {
                 SearchRequest { query: Some(dsl.clone()), ..Default::default() }
             } else {
@@ -80,6 +86,7 @@ pub fn execute_tool(db: &Database, name: &str, args: &Value) -> McpCallToolResul
             req.sender = args.get("sender").and_then(|s| s.as_str()).map(|s| s.to_string());
             req.chat_id = args.get("chat_id").and_then(|c| c.as_str()).map(|s| s.to_string());
             req.source = args.get("source").and_then(|s| s.as_str()).map(|s| s.to_string());
+            req.account = args.get("account").and_then(|a| a.as_str()).map(|s| s.to_string());
             req.has_media = args.get("has_media").and_then(|h| h.as_bool());
             req.media_type = args.get("media_type").and_then(|m| m.as_str()).map(|s| s.to_string());
             req.is_from_me = args.get("is_from_me").and_then(|f| f.as_bool());
@@ -104,10 +111,19 @@ pub fn execute_tool(db: &Database, name: &str, args: &Value) -> McpCallToolResul
             }
         }
 
+        "list_accounts" => match list_accounts(db.conn()) {
+            Ok(accounts) => {
+                let json_text = serde_json::to_string_pretty(&accounts).unwrap_or_default();
+                McpCallToolResult::text(format!("Retrieved {} accounts:\n{}", accounts.len(), json_text))
+            }
+            Err(e) => McpCallToolResult::error(format!("Failed to list accounts: {}", e)),
+        },
+
         "list_chats" => {
             let source = args.get("source").and_then(|s| s.as_str());
+            let account = args.get("account").and_then(|a| a.as_str());
             let query = args.get("query").and_then(|q| q.as_str());
-            match list_chats(db.conn(), source, query) {
+            match list_chats(db.conn(), source, account, query) {
                 Ok(chats) => {
                     let json_text = serde_json::to_string_pretty(&chats).unwrap_or_default();
                     McpCallToolResult::text(format!("Retrieved {} conversations:\n{}", chats.len(), json_text))
@@ -140,7 +156,7 @@ pub fn execute_tool(db: &Database, name: &str, args: &Value) -> McpCallToolResul
             };
 
             let sql = "
-                SELECT a.id, a.message_id, a.mimetype, a.filename, a.file_size, a.sha256, a.media_type, m.eml_path
+                SELECT a.id, a.message_id, a.mimetype, a.filename, a.file_size, a.sha256, a.media_type, m.eml_path, a.external_path
                 FROM attachments a
                 JOIN messages m ON m.id = a.message_id
                 WHERE a.id = ?1
@@ -160,6 +176,7 @@ pub fn execute_tool(db: &Database, name: &str, args: &Value) -> McpCallToolResul
                     "sha256": row.get::<_, String>(5)?,
                     "media_type": row.get::<_, String>(6)?,
                     "eml_path": row.get::<_, String>(7)?,
+                    "external_path": row.get::<_, Option<String>>(8)?,
                 }))
             });
 

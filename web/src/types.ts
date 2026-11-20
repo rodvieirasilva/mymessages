@@ -1,3 +1,11 @@
+export interface AccountSummary {
+  id: string;
+  name: string;
+  sources: string[];
+  message_count: number;
+  chat_count: number;
+}
+
 export interface AttachmentInfo {
   id: string;
   filename: string | null;
@@ -9,6 +17,7 @@ export interface AttachmentInfo {
 export interface SearchResult {
   id: string;
   source: string;
+  account: string;
   conversation_id: string;
   conversation_name: string | null;
   sender_name: string | null;
@@ -24,6 +33,7 @@ export interface SearchResult {
 export interface ChatSummary {
   id: string;
   source_id: string;
+  account_id: string;
   remote_id: string;
   name: string | null;
   is_group: boolean;
@@ -35,6 +45,7 @@ export interface ChatSummary {
 export interface SearchFilters {
   query: string;
   source?: string;
+  account?: string;
   chat_id?: string;
   has_media?: boolean;
   media_type?: string;

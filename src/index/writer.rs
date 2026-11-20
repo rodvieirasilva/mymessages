@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use rusqlite::Connection;
 
-use crate::models::{CanonicalMessage, Contact, Conversation};
+use crate::models::{scoped_id, CanonicalMessage, Contact, Conversation};
 
 pub fn index_message(
     conn: &mut Connection,
@@ -10,50 +10,58 @@ pub fn index_message(
     eml_path: &str,
 ) -> Result<()> {
     let tx = conn.transaction()?;
+    let account = if msg.account.is_empty() { "default" } else { msg.account.as_str() };
 
-    // 1. Ensure source exists
+    // 1. Ensure source & account exist
     tx.execute(
         "INSERT OR IGNORE INTO sources (id, name) VALUES (?1, ?2)",
         [&msg.source, &msg.source],
     )?;
+    tx.execute(
+        "INSERT OR IGNORE INTO accounts (id, name, source_id) VALUES (?1, ?2, ?3)",
+        [account, account, msg.source.as_str()],
+    )?;
 
     // 2. Ensure conversation exists
-    let conv = Conversation::new(
+    let conv = Conversation::for_account(
         &msg.source,
+        account,
         &msg.conversation_id,
         msg.conversation_name.clone(),
         msg.is_group,
     );
     tx.execute(
-        "INSERT INTO conversations (id, source_id, remote_id, name, is_group, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-         ON CONFLICT(id) DO UPDATE SET name = coalesce(?4, name), updated_at = CURRENT_TIMESTAMP",
-        rusqlite::params![conv.id, conv.source_id, conv.remote_id, conv.name, conv.is_group],
+        "INSERT INTO conversations (id, source_id, account_id, remote_id, name, is_group, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+         ON CONFLICT(id) DO UPDATE SET name = coalesce(?5, name), updated_at = CURRENT_TIMESTAMP",
+        rusqlite::params![conv.id, conv.source_id, conv.account_id, conv.remote_id, conv.name, conv.is_group],
     )?;
 
     // 3. Ensure sender contact exists
-    let contact = Contact::new(
+    let contact = Contact::for_account(
         &msg.source,
+        account,
         &msg.sender.id,
         msg.sender.name.clone(),
         msg.sender.phone_number.clone(),
     );
     tx.execute(
-        "INSERT INTO contacts (id, source_id, remote_id, display_name, phone_number)
-         VALUES (?1, ?2, ?3, ?4, ?5)
-         ON CONFLICT(id) DO UPDATE SET display_name = coalesce(?4, display_name), phone_number = coalesce(?5, phone_number)",
-        rusqlite::params![contact.id, contact.source_id, contact.remote_id, contact.display_name, contact.phone_number],
+        "INSERT INTO contacts (id, source_id, account_id, remote_id, display_name, phone_number)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+         ON CONFLICT(id) DO UPDATE SET display_name = coalesce(?5, display_name), phone_number = coalesce(?6, phone_number)",
+        rusqlite::params![contact.id, contact.source_id, contact.account_id, contact.remote_id, contact.display_name, contact.phone_number],
     )?;
 
     // 4. Insert message
-    let full_msg_id = format!("{}:{}", msg.source, msg.id);
+    let full_msg_id = scoped_id(&msg.source, account, &msg.id);
     let raw_json_str = serde_json::to_string(&msg.raw_payload).unwrap_or_default();
     tx.execute(
-        "INSERT INTO messages (id, source_id, conversation_id, sender_id, timestamp, body, has_attachments, is_from_me, reply_to_id, eml_path, content_hash, raw_json)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+        "INSERT INTO messages (id, source_id, account_id, conversation_id, sender_id, timestamp, body, has_attachments, is_from_me, reply_to_id, eml_path, content_hash, raw_json)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
         rusqlite::params![
             full_msg_id,
             msg.source,
+            account,
             conv.id,
             contact.id,
             msg.timestamp.timestamp(),
@@ -75,18 +83,21 @@ pub fn index_message(
         if let Some(name) = fname {
             att_names.push(name);
         }
+        let file_size = if att.file_size > 0 { att.file_size as i64 } else { att.data.len() as i64 };
+        let ext_path = att.external_path.as_ref().map(|p| p.to_string_lossy().to_string());
         tx.execute(
-            "INSERT OR REPLACE INTO attachments (id, message_id, filename, mimetype, file_size, sha256, media_type, duration_seconds)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT OR REPLACE INTO attachments (id, message_id, filename, mimetype, file_size, sha256, media_type, duration_seconds, external_path)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             rusqlite::params![
                 att_id,
                 full_msg_id,
                 fname,
                 att.mimetype,
-                att.data.len() as i64,
+                file_size,
                 att.sha256,
                 att.media_type.as_str(),
                 att.duration_seconds,
+                ext_path,
             ],
         )?;
     }
@@ -140,6 +151,7 @@ mod tests {
         let msg = CanonicalMessage {
             id: "m_1".into(),
             source: "whatsapp".into(),
+            account: "default".into(),
             conversation_id: "c_1".into(),
             conversation_name: Some("Project Group".into()),
             is_group: true,

@@ -1,4 +1,4 @@
-import type { ChatSummary, SearchFilters, SearchResult } from './types';
+import type { AccountSummary, ChatSummary, SearchFilters, SearchResult } from './types';
 
 const BASE_URL = '/v1';
 
@@ -6,10 +6,19 @@ export function getAttachmentUrl(id: string): string {
   return `${BASE_URL}/attachments/${encodeURIComponent(id)}`;
 }
 
+export async function fetchAccounts(): Promise<AccountSummary[]> {
+  const res = await fetch(`${BASE_URL}/accounts`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch accounts with status ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function searchMessages(filters: SearchFilters): Promise<SearchResult[]> {
   const params = new URLSearchParams();
   if (filters.query) params.set('query', filters.query);
   if (filters.source) params.set('source', filters.source);
+  if (filters.account) params.set('account', filters.account);
   if (filters.chat_id) params.set('chat_id', filters.chat_id);
   if (filters.has_media !== undefined) params.set('has_media', String(filters.has_media));
   if (filters.media_type) params.set('media_type', filters.media_type);
@@ -22,9 +31,14 @@ export async function searchMessages(filters: SearchFilters): Promise<SearchResu
   return res.json();
 }
 
-export async function fetchChats(source?: string, query?: string): Promise<ChatSummary[]> {
+export async function fetchChats(
+  source?: string,
+  query?: string,
+  account?: string,
+): Promise<ChatSummary[]> {
   const params = new URLSearchParams();
   if (source) params.set('source', source);
+  if (account) params.set('account', account);
   if (query) params.set('query', query);
   const qs = params.toString();
   const url = qs ? `${BASE_URL}/chats?${qs}` : `${BASE_URL}/chats`;

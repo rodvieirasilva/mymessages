@@ -5,6 +5,7 @@ use axum::response::IntoResponse;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
 use std::fs;
+use std::path::Path as StdPath;
 
 use crate::api::state::AppState;
 
@@ -17,6 +18,7 @@ use crate::api::state::AppState;
     ),
     responses(
         (status = 200, description = "Streamed binary attachment content", content_type = "application/octet-stream"),
+        (status = 403, description = "External attachment outside configured media roots"),
         (status = 404, description = "Attachment or EML file not found"),
         (status = 500, description = "Internal error extracting attachment")
     )
@@ -25,13 +27,13 @@ pub async fn get_attachment_handler(
     State(state): State<AppState>,
     Path(att_id): Path<String>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let (eml_rel_path, mimetype, filename, sha256) = {
+    let (eml_rel_path, mimetype, filename, sha256, external_path) = {
         let db = state.db.lock().map_err(|e| {
             (StatusCode::INTERNAL_SERVER_ERROR, format!("DB lock error: {}", e))
         })?;
 
         let sql = "
-            SELECT m.eml_path, a.mimetype, a.filename, a.sha256
+            SELECT m.eml_path, a.mimetype, a.filename, a.sha256, a.external_path
             FROM attachments a
             JOIN messages m ON m.id = a.message_id
             WHERE a.id = ?1
@@ -46,12 +48,60 @@ pub async fn get_attachment_handler(
                 row.get::<_, String>(1)?,
                 row.get::<_, Option<String>>(2)?,
                 row.get::<_, String>(3)?,
+                row.get::<_, Option<String>>(4)?,
             ))
         })
         .map_err(|_| (StatusCode::NOT_FOUND, "Attachment not found".into()))?
     };
 
-    let rel_path = std::path::Path::new(&eml_rel_path);
+    let binary = if let Some(ext_path_str) = external_path {
+        read_external_attachment(&state, StdPath::new(&ext_path_str))?
+    } else {
+        read_eml_attachment(&state, &eml_rel_path, &sha256)?
+    };
+
+    let headers = build_attachment_headers(&mimetype, filename);
+    Ok((headers, binary))
+}
+
+fn read_external_attachment(
+    state: &AppState,
+    ext_path: &StdPath,
+) -> Result<Vec<u8>, (StatusCode, String)> {
+    let canonical_target = fs::canonicalize(ext_path)
+        .map_err(|_| (StatusCode::NOT_FOUND, "External attachment file not found".into()))?;
+
+    let mut allowed_roots = state.config.allowed_media_roots();
+    allowed_roots.push(state.data_dir.clone());
+    allowed_roots.push(state.storage.root_dir.clone());
+
+    let is_allowed = allowed_roots.iter().any(|root| {
+        fs::canonicalize(root)
+            .map(|canon_root| canonical_target.starts_with(&canon_root))
+            .unwrap_or(false)
+    });
+
+    if !is_allowed {
+        return Err((
+            StatusCode::FORBIDDEN,
+            "External attachment is outside configured media roots".into(),
+        ));
+    }
+
+    fs::read(&canonical_target).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to read external attachment: {}", e),
+        )
+    })
+}
+
+fn read_eml_attachment(
+    state: &AppState,
+    eml_rel_path: &str,
+    sha256: &str,
+) -> Result<Vec<u8>, (StatusCode, String)> {
+    let rel_path = StdPath::new(eml_rel_path);
     if rel_path.is_absolute()
         || rel_path.components().any(|c| {
             matches!(
@@ -77,14 +127,12 @@ pub async fn get_attachment_handler(
         )
     })?;
 
-    // Find the header boundary to avoid matching headers inside message text
     let header_end = eml_content
         .find("\r\n\r\n")
         .or_else(|| eml_content.find("\n\n"))
         .unwrap_or(0);
     let mime_body = &eml_content[header_end..];
 
-    // Extract base64 part with matching SHA-256 header
     let target_header = format!("X-Attachment-SHA256: {}", sha256);
     let pos = mime_body
         .find(&target_header)
@@ -108,15 +156,17 @@ pub async fn get_attachment_handler(
         .filter(|c| !c.is_whitespace())
         .collect();
 
-    let binary = BASE64.decode(raw_b64).map_err(|e| {
+    BASE64.decode(raw_b64).map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Base64 decode failed: {}", e),
         )
-    })?;
+    })
+}
 
+fn build_attachment_headers(mimetype: &str, filename: Option<String>) -> HeaderMap {
     let mut headers = HeaderMap::new();
-    let content_type = HeaderValue::from_str(&mimetype)
+    let content_type = HeaderValue::from_str(mimetype)
         .unwrap_or_else(|_| HeaderValue::from_static("application/octet-stream"));
     headers.insert(CONTENT_TYPE, content_type);
     headers.insert(
@@ -145,5 +195,5 @@ pub async fn get_attachment_handler(
         headers.insert(CONTENT_DISPOSITION, hv);
     }
 
-    Ok((headers, binary))
+    headers
 }

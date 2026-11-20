@@ -149,9 +149,16 @@ impl SourceAdapter for EvolutionApiAdapter {
             sender_name.clone()
         };
 
+        let account = payload["instance"]
+            .as_str()
+            .filter(|s| !s.is_empty())
+            .unwrap_or("default")
+            .to_string();
+
         Ok(Some(CanonicalMessage {
             id: message_id,
             source: "whatsapp".to_string(),
+            account,
             conversation_id: remote_jid,
             conversation_name,
             is_group,

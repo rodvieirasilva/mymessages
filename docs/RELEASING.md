@@ -36,7 +36,9 @@ mise run build
 Update the version number in:
 1. `Cargo.toml`: `version = "X.Y.Z"`
 2. `web/package.json`: `"version": "X.Y.Z"`
-3. `web/src/main.ts`: `<span class="version-badge">vX.Y.Z</span>`
+3. `web/src/layout.ts`: `<span class="version-badge">vX.Y.Z</span>`
+4. `src/api/openapi.rs`: `version = "X.Y.Z"`
+5. `README.md`: version badge `vX.Y.Z`
 
 Commit the version bump:
 ```bash

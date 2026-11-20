@@ -41,9 +41,17 @@ impl Database {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
+            CREATE TABLE IF NOT EXISTS accounts (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                source_id TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
             CREATE TABLE IF NOT EXISTS conversations (
                 id TEXT PRIMARY KEY,
                 source_id TEXT NOT NULL REFERENCES sources(id),
+                account_id TEXT NOT NULL DEFAULT 'default',
                 remote_id TEXT NOT NULL,
                 name TEXT,
                 is_group BOOLEAN NOT NULL DEFAULT 0,
@@ -54,6 +62,7 @@ impl Database {
             CREATE TABLE IF NOT EXISTS contacts (
                 id TEXT PRIMARY KEY,
                 source_id TEXT NOT NULL REFERENCES sources(id),
+                account_id TEXT NOT NULL DEFAULT 'default',
                 remote_id TEXT NOT NULL,
                 display_name TEXT,
                 phone_number TEXT,
@@ -63,6 +72,7 @@ impl Database {
             CREATE TABLE IF NOT EXISTS messages (
                 id TEXT PRIMARY KEY,
                 source_id TEXT NOT NULL REFERENCES sources(id),
+                account_id TEXT NOT NULL DEFAULT 'default',
                 conversation_id TEXT NOT NULL REFERENCES conversations(id),
                 sender_id TEXT NOT NULL REFERENCES contacts(id),
                 timestamp INTEGER NOT NULL,
@@ -84,7 +94,8 @@ impl Database {
                 file_size INTEGER NOT NULL,
                 sha256 TEXT NOT NULL,
                 media_type TEXT,
-                duration_seconds INTEGER
+                duration_seconds INTEGER,
+                external_path TEXT
             );
 
             CREATE TABLE IF NOT EXISTS indexed_hashes (
@@ -113,8 +124,36 @@ impl Database {
             ",
         ).context("Failed to initialize database schema")?;
 
+        self.run_migrations()?;
         Ok(())
     }
+
+    fn run_migrations(&self) -> Result<()> {
+        ensure_column(&self.conn, "conversations", "account_id", "TEXT NOT NULL DEFAULT 'default'")?;
+        ensure_column(&self.conn, "contacts", "account_id", "TEXT NOT NULL DEFAULT 'default'")?;
+        ensure_column(&self.conn, "messages", "account_id", "TEXT NOT NULL DEFAULT 'default'")?;
+        ensure_column(&self.conn, "attachments", "external_path", "TEXT")?;
+
+        self.conn.execute_batch(
+            "
+            CREATE INDEX IF NOT EXISTS idx_messages_account ON messages(account_id);
+            CREATE INDEX IF NOT EXISTS idx_conversations_account ON conversations(account_id);
+            ",
+        )?;
+        Ok(())
+    }
+}
+
+fn ensure_column(conn: &Connection, table: &str, column: &str, col_def: &str) -> Result<()> {
+    let mut stmt = conn.prepare(&format!("PRAGMA table_info({})", table))?;
+    let cols: Vec<String> = stmt
+        .query_map([], |row| row.get::<_, String>(1))?
+        .filter_map(|r| r.ok())
+        .collect();
+    if !cols.iter().any(|c| c == column) {
+        conn.execute(&format!("ALTER TABLE {} ADD COLUMN {} {}", table, column, col_def), [])?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -128,6 +167,7 @@ mod tests {
         let tables: Vec<String> = stmt.query_map([], |row| row.get(0)).unwrap().map(|r| r.unwrap()).collect();
 
         assert!(tables.contains(&"sources".to_string()));
+        assert!(tables.contains(&"accounts".to_string()));
         assert!(tables.contains(&"messages".to_string()));
         assert!(tables.contains(&"messages_fts".to_string()));
     }
