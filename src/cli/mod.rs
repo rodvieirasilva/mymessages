@@ -8,7 +8,11 @@ use clap::{Parser, Subcommand};
 pub use handlers::execute_command;
 
 #[derive(Parser, Debug)]
-#[command(name = "mymessages", about = "Local-first personal messaging vault and search engine")]
+#[command(
+    name = "mymessages",
+    version = concat!(env!("CARGO_PKG_VERSION"), " (", env!("MYMESSAGES_BUILD_TIME"), " · ", env!("MYMESSAGES_GIT_SHA"), ")"),
+    about = "Local-first personal messaging vault and search engine"
+)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,

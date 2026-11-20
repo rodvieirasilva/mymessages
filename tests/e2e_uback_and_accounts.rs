@@ -144,11 +144,36 @@ async fn test_e2e_uback_multi_account_zero_duplication_and_api() {
     assert_eq!(two_res.len(), 1);
     assert_eq!(two_res[0]["account"], "device_two");
 
-    // 4. Chats filtered by account
+    // 4. Chats filtered by account, has_media (Text Only vs Media), and direction
     let resp = router.clone().oneshot(Request::builder().uri("/v1/chats?account=device_two").body(Body::empty()).unwrap()).await.unwrap();
     let chats_two: Vec<Value> = serde_json::from_slice(&resp.into_body().collect().await.unwrap().to_bytes()).unwrap();
     assert_eq!(chats_two.len(), 1);
     assert_eq!(chats_two[0]["account_id"], "device_two");
+
+    // Text-only chats filter (`has_media=false`) returns only device_two's text-only chat
+    let resp = router.clone().oneshot(Request::builder().uri("/v1/chats?has_media=false").body(Body::empty()).unwrap()).await.unwrap();
+    let text_chats: Vec<Value> = serde_json::from_slice(&resp.into_body().collect().await.unwrap().to_bytes()).unwrap();
+    assert_eq!(text_chats.len(), 1);
+    assert_eq!(text_chats[0]["account_id"], "device_two");
+
+    // Image chats filter (`media_type=image&has_media=true`) returns only device_one's image chat
+    let resp = router.clone().oneshot(Request::builder().uri("/v1/chats?has_media=true&media_type=image").body(Body::empty()).unwrap()).await.unwrap();
+    let img_chats: Vec<Value> = serde_json::from_slice(&resp.into_body().collect().await.unwrap().to_bytes()).unwrap();
+    assert_eq!(img_chats.len(), 1);
+    assert_eq!(img_chats[0]["account_id"], "device_one");
+
+    // Incoming direction filter (`is_from_me=false`) returns both chats
+    let resp = router.clone().oneshot(Request::builder().uri("/v1/chats?is_from_me=false").body(Body::empty()).unwrap()).await.unwrap();
+    let in_chats: Vec<Value> = serde_json::from_slice(&resp.into_body().collect().await.unwrap().to_bytes()).unwrap();
+    assert_eq!(in_chats.len(), 2);
+
+    // Health endpoint includes version, build_time, and commit
+    let resp = router.clone().oneshot(Request::builder().uri("/health").body(Body::empty()).unwrap()).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let health: Value = serde_json::from_slice(&resp.into_body().collect().await.unwrap().to_bytes()).unwrap();
+    assert_eq!(health["status"], "ok");
+    assert!(health["build_time"].as_str().is_some());
+    assert!(health["commit"].as_str().is_some());
 
     // 5. Attachment streams directly from UBack external path without duplication
     let att_id = one_res[0]["attachments"][0]["id"].as_str().unwrap();
