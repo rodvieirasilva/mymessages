@@ -159,17 +159,51 @@ async function loadChatTimeline(chat: ChatSummary) {
   const container = document.getElementById('messagesContainer')!;
   header.textContent = chat.name || chat.remote_id;
   container.innerHTML = '<div class="empty-state">Loading timeline...</div>';
+  container.onscroll = null;
 
   try {
-    const messages = await fetchChatMessages(chat.id);
+    const messages = await fetchChatMessages(chat.id, 50);
     container.innerHTML = '';
     if (messages.length === 0) {
       container.innerHTML = '<div class="empty-state">No messages in this chat.</div>';
       return;
     }
-    for (const msg of messages) {
+
+    const chronological = [...messages].reverse();
+    let oldestTimestamp = chronological[0].timestamp;
+    let hasMoreOlder = messages.length === 50;
+    let loadingOlder = false;
+
+    for (const msg of chronological) {
       container.appendChild(renderMessage(msg));
     }
+    container.scrollTop = container.scrollHeight;
+
+    container.onscroll = async () => {
+      if (selectedChatId !== chat.id || !hasMoreOlder || loadingOlder || container.scrollTop > 80) {
+        return;
+      }
+      loadingOlder = true;
+      try {
+        const older = await fetchChatMessages(chat.id, 50, oldestTimestamp);
+        if (older.length < 50) {
+          hasMoreOlder = false;
+        }
+        if (older.length > 0 && selectedChatId === chat.id) {
+          const olderChrono = [...older].reverse();
+          oldestTimestamp = olderChrono[0].timestamp;
+          const prevHeight = container.scrollHeight;
+          const frag = document.createDocumentFragment();
+          for (const msg of olderChrono) {
+            frag.appendChild(renderMessage(msg));
+          }
+          container.insertBefore(frag, container.firstChild);
+          container.scrollTop += container.scrollHeight - prevHeight;
+        }
+      } finally {
+        loadingOlder = false;
+      }
+    };
   } catch {
     container.innerHTML = `<div class="error-state">Failed to load messages</div>`;
   }

@@ -53,8 +53,14 @@ export async function fetchChats(
   return res.json();
 }
 
-export async function fetchChatMessages(chatId: string, limit = 50): Promise<SearchResult[]> {
-  const res = await fetch(`${BASE_URL}/chats/${encodeURIComponent(chatId)}/messages?limit=${limit}`);
+export async function fetchChatMessages(
+  chatId: string,
+  limit = 50,
+  before?: number,
+): Promise<SearchResult[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (before !== undefined) params.set('before', String(before));
+  const res = await fetch(`${BASE_URL}/chats/${encodeURIComponent(chatId)}/messages?${params.toString()}`);
   if (!res.ok) {
     throw new Error(`Failed to fetch chat messages with status ${res.status}`);
   }
