@@ -3,7 +3,6 @@
 [server]
 host = "127.0.0.1"
 port = 8765
-static_dir = "./web/dist"
 cors_allowed_origins = ["http://localhost:8765", "http://127.0.0.1:8765"]
 
 # Modular list of storage targets

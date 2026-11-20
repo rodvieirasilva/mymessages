@@ -25,7 +25,7 @@ impl Default for ServerConfig {
         Self {
             host: "0.0.0.0".into(),
             port: 8765,
-            static_dir: Some("./web/dist".into()),
+            static_dir: None,
             cors_allowed_origins: vec!["*".into()],
         }
     }

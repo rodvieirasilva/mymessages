@@ -6,6 +6,7 @@ pub mod mcp;
 pub mod openapi;
 pub mod search;
 pub mod state;
+pub mod static_assets;
 pub mod webhook;
 
 use std::path::PathBuf;
@@ -46,7 +47,7 @@ pub fn create_router(state: AppState, static_dir: Option<PathBuf>) -> Router {
         .route("/webhook/evolution", post(webhook::evolution_webhook_handler))
         .route("/webhook/waha", post(webhook::waha_webhook_handler));
 
-    let mut app = Router::new()
+    let app = Router::new()
         .route("/health", get(health::health_handler))
         .nest("/v1", api_routes.clone())
         .nest("/api/v1", api_routes)
@@ -58,11 +59,11 @@ pub fn create_router(state: AppState, static_dir: Option<PathBuf>) -> Router {
         if dir.exists() {
             let index_file = dir.join("index.html");
             let serve_service = ServeDir::new(&dir).fallback(ServeFile::new(index_file));
-            app = app.fallback_service(serve_service);
+            return app.fallback_service(serve_service);
         }
     }
 
-    app
+    app.fallback(static_assets::embedded_static_handler)
 }
 
 #[cfg(test)]

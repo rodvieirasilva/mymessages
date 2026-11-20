@@ -96,7 +96,11 @@ function renderFacets() {
       currentFilters,
       (updated) => {
         Object.assign(currentFilters, updated);
-        if (updated.chat_id === undefined && 'account' in updated) {
+        if (updated.query === '') {
+          const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
+          if (searchInput) searchInput.value = '';
+        }
+        if (updated.chat_id === undefined && ('account' in updated || 'query' in updated)) {
           selectedChatId = null;
         }
         renderFacets();

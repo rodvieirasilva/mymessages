@@ -6,12 +6,13 @@ RUN npm ci
 COPY web/ ./
 RUN npm run build
 
-# Stage 2: Build Rust Backend
+# Stage 2: Build Rust Backend (with embedded web/dist)
 FROM rust:1.99-alpine AS rust-builder
 RUN apk add --no-cache musl-dev gcc make curl
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY src/ ./src/
+COPY --from=web-builder /app/web/dist ./web/dist
 RUN cargo build --release
 
 # Stage 3: Ultra-Minimal Alpine Runtime Image
@@ -24,7 +25,6 @@ RUN addgroup -g 10001 -S mymessages && \
 
 WORKDIR /app
 COPY --from=rust-builder --chown=mymessages:mymessages /app/target/release/mymessages /usr/local/bin/mymessages
-COPY --from=web-builder --chown=mymessages:mymessages /app/web/dist /app/web/dist
 COPY --chown=mymessages:mymessages mymessages.toml /app/mymessages.toml
 
 # Pre-create data directory with non-root ownership
@@ -35,7 +35,6 @@ USER 10001:10001
 
 ENV MYMESSAGES_DATA_DIR=/data
 ENV MYMESSAGES_PORT=8765
-ENV MYMESSAGES_STATIC_DIR=/app/web/dist
 
 VOLUME ["/data"]
 EXPOSE 8765

@@ -67,6 +67,25 @@ describe('facets module', () => {
     const incomingPill = Array.from(bar.querySelectorAll('button')).find((b) => b.textContent?.includes('Incoming'))!;
     incomingPill.click();
     expect(onChange).toHaveBeenCalledWith({ is_from_me: false });
+
+    // Click on Text Only pill
+    const textOnlyPill = Array.from(bar.querySelectorAll('button')).find((b) => b.textContent?.includes('Text Only'))!;
+    textOnlyPill.click();
+    expect(onChange).toHaveBeenCalledWith({ media_type: undefined, has_media: false });
+
+    // Click on Clear Filters button
+    const clearBtn = bar.querySelector('[data-testid="clear-filters-button"]') as HTMLButtonElement;
+    expect(clearBtn).not.toBeNull();
+    clearBtn.click();
+    expect(onChange).toHaveBeenCalledWith({
+      query: '',
+      account: undefined,
+      source: undefined,
+      chat_id: undefined,
+      media_type: undefined,
+      has_media: undefined,
+      is_from_me: undefined,
+    });
   });
 
   it('preserves active account pill when not in accounts list', () => {

@@ -88,16 +88,22 @@ export function renderFacetBar(
   );
 
   // 3. Media Type facet
+  const currentMedia = filters.media_type ?? (filters.has_media === false ? 'text' : undefined);
   const mediaOptions: FacetOption[] = [
     { label: 'All Types', value: undefined },
+    { label: '📝 Text Only', value: 'text' },
     { label: '🖼️ Images', value: 'image' },
     { label: '🎙️ Audio', value: 'audio' },
     { label: '📄 Docs', value: 'document' },
     { label: '🎬 Videos', value: 'video' },
   ];
   bar.appendChild(
-    renderFacetPills('Media', mediaOptions, filters.media_type, (val) => {
-      onChange({ media_type: val, has_media: val ? true : undefined });
+    renderFacetPills('Media', mediaOptions, currentMedia, (val) => {
+      if (val === 'text') {
+        onChange({ media_type: undefined, has_media: false });
+      } else {
+        onChange({ media_type: val, has_media: val ? true : undefined });
+      }
     }),
   );
 
@@ -117,6 +123,36 @@ export function renderFacetBar(
       onChange({ is_from_me: isFromMe });
     }),
   );
+
+  const hasActiveFilters = Boolean(
+    filters.query.trim()
+      || filters.account
+      || filters.source
+      || filters.chat_id
+      || filters.media_type
+      || filters.has_media !== undefined
+      || filters.is_from_me !== undefined,
+  );
+
+  if (hasActiveFilters) {
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.className = 'facet-pill clear-filters-btn';
+    clearBtn.dataset.testid = 'clear-filters-button';
+    clearBtn.textContent = '✕ Clear Filters';
+    clearBtn.onclick = () => {
+      onChange({
+        query: '',
+        account: undefined,
+        source: undefined,
+        chat_id: undefined,
+        media_type: undefined,
+        has_media: undefined,
+        is_from_me: undefined,
+      });
+    };
+    bar.appendChild(clearBtn);
+  }
 
   return bar;
 }

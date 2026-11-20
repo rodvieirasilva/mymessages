@@ -101,6 +101,18 @@ pub fn execute_adapter_command(command: AdapterCommands) -> Result<()> {
                         continue;
                     }
                     pipeline.write_all(msg, &hash)?;
+                    if !msg.id.starts_with("uback_media_") {
+                        let guard = db_arc.lock().map_err(|e| anyhow::anyhow!("DB lock error: {}", e))?;
+                        for att in &msg.attachments {
+                            if let Some(ref ext) = att.external_path {
+                                let ext_str = ext.to_string_lossy();
+                                let _ = guard.conn().execute(
+                                    "DELETE FROM messages WHERE id LIKE '%:uback_media_%' AND id IN (SELECT message_id FROM attachments WHERE external_path = ?1)",
+                                    [ext_str.as_ref()],
+                                );
+                            }
+                        }
+                    }
                     newly_indexed += 1;
                 }
 
