@@ -17,6 +17,8 @@ pub struct ServerConfig {
     pub host: String,
     pub port: u16,
     pub static_dir: Option<PathBuf>,
+    #[serde(default)]
+    pub tmp_dir: Option<PathBuf>,
     pub cors_allowed_origins: Vec<String>,
 }
 
@@ -26,6 +28,7 @@ impl Default for ServerConfig {
             host: "0.0.0.0".into(),
             port: 8765,
             static_dir: None,
+            tmp_dir: None,
             cors_allowed_origins: vec!["*".into()],
         }
     }

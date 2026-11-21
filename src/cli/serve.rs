@@ -19,6 +19,13 @@ pub async fn run_serve_command(
     let mut cfg = AppConfig::load_or_default(config.as_deref());
     if let Some(h) = host { cfg.server.host = h; }
     if let Some(p) = port { cfg.server.port = p; }
+    if let Some(tmp) = std::env::var_os("MYMESSAGES_TMP_DIR").map(PathBuf::from).or_else(|| cfg.server.tmp_dir.clone()) {
+        let expanded = expand_tilde(&tmp);
+        fs::create_dir_all(&expanded)
+            .with_context(|| format!("Failed to create tmp_dir {:?}", expanded))?;
+        unsafe { std::env::set_var("TMPDIR", &expanded); }
+        info!("Using TMPDIR: {:?}", expanded);
+    }
     let base_data_dir = data_dir.unwrap_or_else(|| {
         std::env::var("MYMESSAGES_DATA_DIR")
             .map(PathBuf::from)
