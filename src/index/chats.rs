@@ -74,12 +74,6 @@ pub fn list_chats(
           AND (?3 IS NULL OR (
               c.name LIKE ?3
               OR c.remote_id LIKE ?3
-              OR c.id IN (
-                  SELECT DISTINCT m2.conversation_id
-                  FROM messages m2
-                  LEFT JOIN contacts ct ON ct.id = m2.sender_id
-                  WHERE m2.body LIKE ?3 OR ct.display_name LIKE ?3
-              )
           ))
           AND (?4 IS NULL AND ?5 IS NULL AND ?6 IS NULL OR EXISTS (
               SELECT 1 FROM messages m3
