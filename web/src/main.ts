@@ -5,6 +5,8 @@ import { buildAppShell } from './layout';
 import { renderChatList, renderMessage } from './render';
 import { initTheme, toggleTheme } from './theme';
 import './style.css';
+
+let searchAbortController: AbortController | null = null;
 import type { AccountSummary, ChatSummary, SearchFilters } from './types';
 
 let currentAccounts: AccountSummary[] = [];
@@ -246,8 +248,14 @@ async function runSearch() {
   header.textContent = q ? `Search results for "${q}"` : 'Recent Messages';
   container.innerHTML = '<div class="empty-state">Searching...</div>';
 
+  if (searchAbortController) {
+    searchAbortController.abort();
+  }
+  searchAbortController = new AbortController();
+  const { signal } = searchAbortController;
+
   try {
-    const results = await searchMessages(currentFilters);
+    const results = await searchMessages(currentFilters, signal);
     container.innerHTML = '';
     if (results.length === 0) {
       container.innerHTML = '<div class="empty-state">No messages match your search and facet filters.</div>';

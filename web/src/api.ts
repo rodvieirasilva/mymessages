@@ -39,7 +39,7 @@ export async function fetchAccounts(): Promise<AccountSummary[]> {
   return res.json();
 }
 
-export async function searchMessages(filters: SearchFilters): Promise<SearchResult[]> {
+export async function searchMessages(filters: SearchFilters, signal?: AbortSignal): Promise<SearchResult[]> {
   const params = new URLSearchParams();
   if (filters.query) params.set('query', filters.query);
   if (filters.source) params.set('source', filters.source);
@@ -49,7 +49,8 @@ export async function searchMessages(filters: SearchFilters): Promise<SearchResu
   if (filters.media_type) params.set('media_type', filters.media_type);
   if (filters.is_from_me !== undefined) params.set('is_from_me', String(filters.is_from_me));
 
-  const res = await fetch(`${BASE_URL}/search?${params.toString()}`);
+  const url = `${BASE_URL}/search?${params.toString()}`;
+  const res = signal ? await fetch(url, { signal }) : await fetch(url);
   if (!res.ok) {
     throw new Error(`Search request failed with status ${res.status}`);
   }
@@ -61,6 +62,7 @@ export async function fetchChats(
   query?: string,
   account?: string,
   extra?: Pick<SearchFilters, 'has_media' | 'media_type' | 'is_from_me'>,
+  signal?: AbortSignal,
 ): Promise<ChatSummary[]> {
   const params = new URLSearchParams();
   if (source) params.set('source', source);
@@ -71,7 +73,7 @@ export async function fetchChats(
   if (extra?.is_from_me !== undefined) params.set('is_from_me', String(extra.is_from_me));
   const qs = params.toString();
   const url = qs ? `${BASE_URL}/chats?${qs}` : `${BASE_URL}/chats`;
-  const res = await fetch(url);
+  const res = signal ? await fetch(url, { signal }) : await fetch(url);
   if (!res.ok) {
     throw new Error(`Failed to fetch chats with status ${res.status}`);
   }
