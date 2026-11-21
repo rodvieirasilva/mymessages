@@ -19,6 +19,15 @@ pub struct ChatSummary {
     pub last_timestamp: Option<i64>,
 }
 
+fn to_like_pattern(input: &str) -> String {
+    let trimmed = input.trim();
+    if trimmed.contains('*') {
+        trimmed.replace('*', "%")
+    } else {
+        format!("%{}%", trimmed)
+    }
+}
+
 pub fn list_chats(
     conn: &Connection,
     source_filter: Option<&str>,
@@ -60,37 +69,42 @@ pub fn list_chats(
             max(m.timestamp) as last_ts
         FROM conversations c
         LEFT JOIN messages m ON m.conversation_id = c.id
-        WHERE (?1 IS NULL OR c.source_id = ?1)
-          AND (?2 IS NULL OR c.account_id = ?2)
+        WHERE (?1 IS NULL OR c.source_id LIKE ?1)
+          AND (?2 IS NULL OR c.account_id LIKE ?2)
           AND (?3 IS NULL OR (
-              c.name LIKE '%' || ?3 || '%' 
-              OR c.remote_id LIKE '%' || ?3 || '%' 
+              c.name LIKE ?3
+              OR c.remote_id LIKE ?3
               OR c.id IN (
-                  SELECT DISTINCT m2.conversation_id 
-                  FROM messages m2 
-                  LEFT JOIN contacts ct ON ct.id = m2.sender_id 
-                  WHERE m2.body LIKE '%' || ?3 || '%' OR ct.display_name LIKE '%' || ?3 || '%'
+                  SELECT DISTINCT m2.conversation_id
+                  FROM messages m2
+                  LEFT JOIN contacts ct ON ct.id = m2.sender_id
+                  WHERE m2.body LIKE ?3 OR ct.display_name LIKE ?3
               )
           ))
           AND (?4 IS NULL AND ?5 IS NULL AND ?6 IS NULL OR EXISTS (
               SELECT 1 FROM messages m3
               WHERE m3.conversation_id = c.id
                 AND (?4 IS NULL OR m3.has_attachments = ?4)
-                AND (?5 IS NULL OR EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m3.id AND a.media_type = ?5))
+                AND (?5 IS NULL OR EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m3.id AND a.media_type LIKE ?5))
                 AND (?6 IS NULL OR m3.is_from_me = ?6)
           ))
         GROUP BY c.id
         ORDER BY last_ts DESC NULLS LAST
     ";
 
+    let src_pat = effective_source.as_deref().map(to_like_pattern);
+    let acct_pat = effective_account.as_deref().map(to_like_pattern);
+    let term_pat = query_term.as_deref().map(to_like_pattern);
+    let media_pat = media_type.map(to_like_pattern);
+
     let mut stmt = conn.prepare(sql)?;
     let rows = stmt.query_map(
         rusqlite::params![
-            effective_source.as_deref(),
-            effective_account.as_deref(),
-            query_term.as_deref(),
+            src_pat.as_deref(),
+            acct_pat.as_deref(),
+            term_pat.as_deref(),
             has_media,
-            media_type,
+            media_pat.as_deref(),
             is_from_me,
         ],
         |row| {

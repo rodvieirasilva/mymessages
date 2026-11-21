@@ -111,6 +111,13 @@ fn parse_vcf_into(content: &str, out: &mut HashMap<String, WaContact>) {
                         phone_number: Some(phone.clone()),
                     };
                     out.entry(digits.clone()).or_insert_with(|| contact.clone());
+                    if let Some(without_55) = digits.strip_prefix("55") {
+                        if without_55.len() >= 8 {
+                            out.entry(without_55.to_string()).or_insert_with(|| contact.clone());
+                        }
+                    } else if digits.len() == 10 || digits.len() == 11 {
+                        out.entry(format!("55{}", digits)).or_insert_with(|| contact.clone());
+                    }
                     if digits.len() >= 8 {
                         let tail = digits[digits.len() - 8..].to_string();
                         out.entry(tail).or_insert(contact);

@@ -21,6 +21,17 @@ async function init() {
 
   const searchInput = document.getElementById('searchInput') as HTMLInputElement;
   const searchBtn = document.getElementById('searchBtn') as HTMLButtonElement;
+  const chatSearchInput = document.getElementById('chatSearchInput') as HTMLInputElement | null;
+  if (chatSearchInput) {
+    let chatSearchTimer: ReturnType<typeof setTimeout> | null = null;
+    chatSearchInput.oninput = () => {
+      if (chatSearchTimer) clearTimeout(chatSearchTimer);
+      chatSearchTimer = setTimeout(() => {
+        void loadChats();
+      }, 250);
+    };
+  }
+
   const themeToggleBtn = document.getElementById('themeToggleBtn') as HTMLButtonElement;
   const dashboardToggleBtn = document.getElementById('dashboardToggleBtn') as HTMLButtonElement;
   const appMain = document.querySelector('.app-main') as HTMLElement | null;

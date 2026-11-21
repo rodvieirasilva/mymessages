@@ -30,6 +30,9 @@ export function buildAppShell(initialTheme: 'dark' | 'light'): string {
     <main class="app-main">
       <aside class="sidebar">
         <div class="sidebar-header" id="sidebarHeader" data-testid="sidebar-header">Conversations</div>
+        <div class="sidebar-search">
+          <input type="text" id="chatSearchInput" data-testid="chat-search-input" placeholder="Filter chats (e.g. jaquelin*)..." />
+        </div>
         <div id="chatListContainer" data-testid="chat-list-container">Loading chats...</div>
       </aside>
       <section class="content-area">
