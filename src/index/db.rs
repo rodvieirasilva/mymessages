@@ -30,10 +30,20 @@ impl Database {
     }
 
     fn init_schema(&self) -> Result<()> {
+        let journal_mode = std::env::var("MYMESSAGES_SQLITE_JOURNAL_MODE")
+            .ok()
+            .map(|v| v.trim().to_ascii_uppercase())
+            .filter(|v| matches!(v.as_str(), "DELETE" | "TRUNCATE" | "PERSIST" | "MEMORY" | "WAL" | "OFF"))
+            .unwrap_or_else(|| "DELETE".to_string());
+        self.conn.execute_batch(&format!(
+            "
+            PRAGMA journal_mode = {};
+            PRAGMA foreign_keys = ON;
+            ",
+            journal_mode
+        ))?;
         self.conn.execute_batch(
             "
-            PRAGMA journal_mode = WAL;
-            PRAGMA foreign_keys = ON;
 
             CREATE TABLE IF NOT EXISTS sources (
                 id TEXT PRIMARY KEY,
