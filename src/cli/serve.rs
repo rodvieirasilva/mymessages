@@ -8,7 +8,7 @@ use crate::adapters::UbackAdapter;
 use crate::api::create_router;
 use crate::api::state::AppState;
 use crate::config::{expand_tilde, AppConfig, CredentialsStore};
-use crate::index::{is_hash_indexed, Database};
+use crate::index::{get_vault_stats, is_hash_indexed, Database};
 
 pub async fn run_serve_command(
     config: Option<PathBuf>,
@@ -31,6 +31,21 @@ pub async fn run_serve_command(
     let db_path = cfg.get_storage_path("sqlite")
         .unwrap_or_else(|| base_data_dir.join("messages.sqlite3"));
     let db = Database::open(&db_path)?;
+    match get_vault_stats(db.conn(), &db_path) {
+        Ok(stats) => {
+            info!(
+                "Vault DB: {} ({:.2} MB) — {} messages across {} chats",
+                stats.db_path,
+                stats.db_size_bytes as f64 / 1_048_576.0,
+                stats.total_messages,
+                stats.total_chats
+            );
+            for s in &stats.sources {
+                info!("  Source '{}': {} messages, {} chats", s.source, s.message_count, s.chat_count);
+            }
+        }
+        Err(e) => warn!("Failed to read initial vault stats: {}", e),
+    }
     let static_opt = cfg.server.static_dir.clone().filter(|p| p.exists());
 
     let addr = format!("{}:{}", cfg.server.host, cfg.server.port);
@@ -62,6 +77,7 @@ fn spawn_uback_poller(state: AppState) {
             let root = backup_root.clone();
             let cfg_clone = uback_cfg.clone();
             let res = tokio::task::spawn_blocking(move || {
+                let _started = std::time::Instant::now();
                 let creds = CredentialsStore::load(cfg_clone.credentials_file.as_deref());
                 let adapter = UbackAdapter::new(root, creds, cfg_clone.accounts, cfg_clone.index_media_without_db);
                 let summary = adapter.scan_all()?;

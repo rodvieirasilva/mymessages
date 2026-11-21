@@ -1,4 +1,5 @@
-import { fetchAccounts, fetchChatMessages, fetchChats, searchMessages } from './api';
+import { fetchAccounts, fetchChatMessages, fetchChats, fetchStats, searchMessages } from './api';
+import { renderDashboard } from './dashboard';
 import { renderFacetBar } from './facets';
 import { buildAppShell } from './layout';
 import { renderChatList, renderMessage } from './render';
@@ -19,6 +20,32 @@ async function init() {
   const searchInput = document.getElementById('searchInput') as HTMLInputElement;
   const searchBtn = document.getElementById('searchBtn') as HTMLButtonElement;
   const themeToggleBtn = document.getElementById('themeToggleBtn') as HTMLButtonElement;
+  const dashboardToggleBtn = document.getElementById('dashboardToggleBtn') as HTMLButtonElement;
+  const appMain = document.querySelector('.app-main') as HTMLElement | null;
+  const dashboardView = document.getElementById('dashboardView') as HTMLElement | null;
+
+  if (dashboardToggleBtn && appMain && dashboardView) {
+    let showingDashboard = false;
+    dashboardToggleBtn.onclick = async () => {
+      showingDashboard = !showingDashboard;
+      if (showingDashboard) {
+        appMain.style.display = 'none';
+        dashboardView.style.display = 'block';
+        dashboardToggleBtn.textContent = '💬 Messages';
+        dashboardView.innerHTML = '<div class="empty-state">Loading vault stats...</div>';
+        try {
+          const stats = await fetchStats();
+          renderDashboard(dashboardView, stats);
+        } catch (err) {
+          dashboardView.innerHTML = `<div class="empty-state">Failed to load stats: ${String(err)}</div>`;
+        }
+      } else {
+        dashboardView.style.display = 'none';
+        appMain.style.display = 'flex';
+        dashboardToggleBtn.textContent = '📊 Dashboard';
+      }
+    };
+  }
 
   if (themeToggleBtn) {
     themeToggleBtn.onclick = () => {

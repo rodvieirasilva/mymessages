@@ -16,6 +16,9 @@ export function buildAppShell(initialTheme: 'dark' | 'light'): string {
         <button id="searchBtn" data-testid="search-button">Search</button>
       </div>
       <div class="header-actions">
+        <button id="dashboardToggleBtn" class="theme-toggle-btn" data-testid="dashboard-toggle-button" title="Toggle Dashboard">
+          📊 Dashboard
+        </button>
         <button id="themeToggleBtn" class="theme-toggle-btn" data-testid="theme-toggle-button" title="Toggle dark/light theme" aria-label="Toggle theme">
           ${initialTheme === 'dark' ? '🌙' : '☀️'}
         </button>
@@ -37,5 +40,6 @@ export function buildAppShell(initialTheme: 'dark' | 'light'): string {
         </div>
       </section>
     </main>
+    <section id="dashboardView" class="dashboard-view" data-testid="dashboard-view" style="display: none;"></section>
   `;
 }

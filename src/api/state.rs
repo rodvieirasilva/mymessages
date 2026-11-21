@@ -11,6 +11,7 @@ pub struct AppState {
     pub storage: Arc<MaildirStorage>,
     pub pipeline: Arc<StoragePipeline>,
     pub data_dir: PathBuf,
+    pub db_path: PathBuf,
     pub config: AppConfig,
 }
 
@@ -19,12 +20,16 @@ impl AppState {
         let storage = Arc::new(MaildirStorage::new(&data_dir));
         let db_arc = Arc::new(Mutex::new(db));
         let pipeline = Arc::new(StoragePipeline::from_config(&config, db_arc.clone(), storage.clone()));
+        let db_path = config
+            .get_storage_path("sqlite")
+            .unwrap_or_else(|| data_dir.join("messages.sqlite3"));
 
         Self {
             db: db_arc,
             storage,
             pipeline,
             data_dir,
+            db_path,
             config,
         }
     }

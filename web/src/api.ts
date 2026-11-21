@@ -6,6 +6,31 @@ export function getAttachmentUrl(id: string): string {
   return `${BASE_URL}/attachments/${encodeURIComponent(id)}`;
 }
 
+export interface SourceStats {
+  source: string;
+  message_count: number;
+  chat_count: number;
+}
+
+export interface VaultStats {
+  version: string;
+  build_time: string;
+  commit: string;
+  db_path: string;
+  db_size_bytes: number;
+  total_messages: number;
+  total_chats: number;
+  sources: SourceStats[];
+}
+
+export async function fetchStats(): Promise<VaultStats> {
+  const res = await fetch(`${BASE_URL}/stats`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch stats with status ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function fetchAccounts(): Promise<AccountSummary[]> {
   const res = await fetch(`${BASE_URL}/accounts`);
   if (!res.ok) {

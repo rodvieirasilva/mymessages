@@ -8,6 +8,7 @@ pub mod metadata;
 pub mod query_dsl;
 pub mod reindex;
 pub mod search_models;
+pub mod stats;
 pub mod writer;
 
 pub use accounts::{list_accounts, AccountSummary};
@@ -18,4 +19,5 @@ pub use hasher::{is_hash_indexed, record_hash};
 pub use lucene::parse_lucene_string;
 pub use query_dsl::{BoolQuery, CompiledQuery, QueryNode, QueryStringClause, RangeClause, SearchRequest};
 pub use reindex::{reindex_from_folder, reindex_from_maildir, ReindexReport, ReindexSource, ReindexTarget};
+pub use stats::{get_vault_stats, SourceStats, VaultStats};
 pub use writer::index_message;

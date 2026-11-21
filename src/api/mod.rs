@@ -7,6 +7,7 @@ pub mod openapi;
 pub mod search;
 pub mod state;
 pub mod static_assets;
+pub mod stats;
 pub mod webhook;
 
 use std::path::PathBuf;
@@ -38,6 +39,7 @@ pub fn create_router(state: AppState, static_dir: Option<PathBuf>) -> Router {
 
     let api_routes = Router::new()
         .route("/health", get(health::health_handler))
+        .route("/stats", get(stats::stats_handler))
         .route("/accounts", get(accounts::list_accounts_handler))
         .route("/search", any(search::search_unified_handler))
         .route("/chats", get(chats::list_chats_handler))
