@@ -155,7 +155,8 @@ function renderFacets() {
 async function loadChats() {
   const container = document.getElementById('chatListContainer')!;
   try {
-    const q = currentFilters.query.trim();
+    const chatSearchInput = document.getElementById('chatSearchInput') as HTMLInputElement | null;
+    const q = chatSearchInput?.value.trim() || currentFilters.query.trim();
     currentChats = await fetchChats(currentFilters.source, q || undefined, currentFilters.account, {
       has_media: currentFilters.has_media,
       media_type: currentFilters.media_type,
