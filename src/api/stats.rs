@@ -49,3 +49,24 @@ pub async fn stats_handler(State(state): State<AppState>) -> impl IntoResponse {
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::AppConfig;
+    use crate::index::Database;
+
+    #[tokio::test]
+    async fn test_stats_handler() {
+        let dir = std::env::temp_dir().join("mymessages_test_api_stats");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let db_path = dir.join("messages.sqlite3");
+        let db = Database::open(&db_path).unwrap();
+        let state = AppState::new(db, dir.clone(), AppConfig::default());
+
+        let resp = stats_handler(State(state)).await.into_response();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
