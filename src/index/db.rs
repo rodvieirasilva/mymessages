@@ -137,12 +137,10 @@ impl Database {
         self.conn.execute_batch(
             "
             CREATE INDEX IF NOT EXISTS idx_messages_account ON messages(account_id);
-            CREATE INDEX IF NOT EXISTS idx_messages_conv_ts ON messages(conversation_id, timestamp DESC);
-            CREATE INDEX IF NOT EXISTS idx_messages_source ON messages(source_id);
-            CREATE INDEX IF NOT EXISTS idx_attachments_msg ON attachments(message_id);
             CREATE INDEX IF NOT EXISTS idx_conversations_account ON conversations(account_id);
             ",
         )?;
+        crate::index::migrations::run_migrations(&self.conn)?;
         Ok(())
     }
 }

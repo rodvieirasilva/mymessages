@@ -5,6 +5,7 @@ pub mod fts;
 pub mod hasher;
 pub mod lucene;
 pub mod metadata;
+pub mod migrations;
 pub mod query_dsl;
 pub mod reindex;
 pub mod search_models;
