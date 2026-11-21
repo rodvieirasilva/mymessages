@@ -8,16 +8,46 @@ pub struct Database {
 
 impl Database {
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let conn = Connection::open(path)?;
+        let path_ref = path.as_ref();
+        let raw = path_ref.to_string_lossy();
+        let (conn, journal_mode) = if raw.starts_with("file:") || raw.starts_with("sqlite://") {
+            let uri = if let Some(rest) = raw.strip_prefix("sqlite://") {
+                format!("file:{}", rest)
+            } else {
+                raw.to_string()
+            };
+            let jm = uri
+                .split('?')
+                .nth(1)
+                .and_then(|q| {
+                    q.split('&').find_map(|kv| {
+                        let (k, v) = kv.split_once('=')?;
+                        if k.eq_ignore_ascii_case("journal_mode") {
+                            let up = v.trim().to_ascii_uppercase();
+                            if matches!(up.as_str(), "DELETE" | "TRUNCATE" | "PERSIST" | "MEMORY" | "WAL" | "OFF") {
+                                return Some(up);
+                            }
+                        }
+                        None
+                    })
+                })
+                .unwrap_or_else(|| "DELETE".to_string());
+            let flags = rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE
+                | rusqlite::OpenFlags::SQLITE_OPEN_CREATE
+                | rusqlite::OpenFlags::SQLITE_OPEN_URI;
+            (Connection::open_with_flags(&uri, flags)?, jm)
+        } else {
+            (Connection::open(path_ref)?, "DELETE".to_string())
+        };
         let db = Self { conn };
-        db.init_schema()?;
+        db.init_schema(&journal_mode)?;
         Ok(db)
     }
 
     pub fn in_memory() -> Result<Self> {
         let conn = Connection::open_in_memory()?;
         let db = Self { conn };
-        db.init_schema()?;
+        db.init_schema("DELETE")?;
         Ok(db)
     }
 
@@ -29,12 +59,7 @@ impl Database {
         &mut self.conn
     }
 
-    fn init_schema(&self) -> Result<()> {
-        let journal_mode = std::env::var("MYMESSAGES_SQLITE_JOURNAL_MODE")
-            .ok()
-            .map(|v| v.trim().to_ascii_uppercase())
-            .filter(|v| matches!(v.as_str(), "DELETE" | "TRUNCATE" | "PERSIST" | "MEMORY" | "WAL" | "OFF"))
-            .unwrap_or_else(|| "DELETE".to_string());
+    fn init_schema(&self, journal_mode: &str) -> Result<()> {
         self.conn.execute_batch(&format!(
             "
             PRAGMA journal_mode = {};
