@@ -56,7 +56,7 @@ pub fn index_message(
     let full_msg_id = scoped_id(&msg.source, account, &msg.id);
     let raw_json_str = serde_json::to_string(&msg.raw_payload).unwrap_or_default();
     tx.execute(
-        "INSERT INTO messages (id, source_id, account_id, conversation_id, sender_id, timestamp, body, has_attachments, is_from_me, reply_to_id, eml_path, content_hash, raw_json)
+        "INSERT OR IGNORE INTO messages (id, source_id, account_id, conversation_id, sender_id, timestamp, body, has_attachments, is_from_me, reply_to_id, eml_path, content_hash, raw_json)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
         rusqlite::params![
             full_msg_id,
