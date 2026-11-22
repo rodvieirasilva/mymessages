@@ -1,6 +1,7 @@
 pub mod accounts;
 pub mod attachments;
 pub mod chats;
+pub mod fields;
 pub mod health;
 pub mod mcp;
 pub mod openapi;
@@ -40,6 +41,7 @@ pub fn create_router(state: AppState, static_dir: Option<PathBuf>) -> Router {
     let api_routes = Router::new()
         .route("/health", get(health::health_handler))
         .route("/stats", get(stats::stats_handler))
+        .route("/fields", get(fields::fields_handler))
         .route("/accounts", get(accounts::list_accounts_handler))
         .route("/search", any(search::search_unified_handler))
         .route("/chats", get(chats::list_chats_handler))
