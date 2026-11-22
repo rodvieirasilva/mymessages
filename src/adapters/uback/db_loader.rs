@@ -25,6 +25,9 @@ impl Drop for DbHandle {
     fn drop(&mut self) {
         if self.cleanup {
             let _ = fs::remove_file(&self.path);
+            let base = self.path.to_string_lossy();
+            let _ = fs::remove_file(format!("{}-shm", base));
+            let _ = fs::remove_file(format!("{}-wal", base));
         }
     }
 }
