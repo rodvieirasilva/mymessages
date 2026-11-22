@@ -16,7 +16,7 @@ pub fn fold_accents(input: &str) -> String {
         .collect()
 }
 
-/// Lightweight PT-BR + EN phonetic key (e.g. "alice" / "alise" / "alyce" -> "JKLN").
+/// Lightweight PT-BR + EN phonetic key (e.g. "carolina" / "karolina" / "carolyna" -> "KRLN").
 pub fn phonetic_key(word: &str) -> String {
     let folded = fold_accents(word);
     let mut s = String::with_capacity(folded.len());
@@ -144,8 +144,8 @@ mod tests {
 
     #[test]
     fn test_phonetic_key_variants() {
-        assert_eq!(phonetic_key("alice"), phonetic_key("alise"));
-        assert_eq!(phonetic_key("alice"), phonetic_key("alyce"));
+        assert_eq!(phonetic_key("Carolina"), phonetic_key("Karolina"));
+        assert_eq!(phonetic_key("Carolina"), phonetic_key("Carolyna"));
     }
 
     #[test]
@@ -167,7 +167,7 @@ mod tests {
     fn test_stop_words_ptbr_and_en() {
         assert!(is_stop_word("não"));
         assert!(is_stop_word("the"));
-        assert!(!is_stop_word("alice"));
+        assert!(!is_stop_word("carolina"));
         assert_eq!(filter_stop_words("a foto do contrato"), vec!["foto", "contrato"]);
         assert_eq!(filter_stop_words("the a"), vec!["the", "a"]);
     }
