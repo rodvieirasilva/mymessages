@@ -21,6 +21,14 @@ async function init() {
 
   const searchInput = document.getElementById('searchInput') as HTMLInputElement;
   const searchBtn = document.getElementById('searchBtn') as HTMLButtonElement;
+  const mobileSidebarBtn = document.getElementById('mobileSidebarBtn') as HTMLButtonElement | null;
+  const sidebarEl = document.querySelector('.sidebar') as HTMLElement | null;
+  if (mobileSidebarBtn && sidebarEl) {
+    mobileSidebarBtn.onclick = () => {
+      sidebarEl.classList.toggle('mobile-open');
+    };
+  }
+
   const chatSearchInput = document.getElementById('chatSearchInput') as HTMLInputElement | null;
   if (chatSearchInput) {
     let chatSearchTimer: ReturnType<typeof setTimeout> | null = null;

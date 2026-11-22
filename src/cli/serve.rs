@@ -37,7 +37,7 @@ pub async fn run_serve_command(
 
     let db_path = cfg.get_storage_path("sqlite")
         .unwrap_or_else(|| base_data_dir.join("messages.sqlite3"));
-    let db = Database::open(&db_path)?;
+    let db = open_or_recover_db(&db_path)?;
     match get_vault_stats(db.conn(), &db_path) {
         Ok(stats) => {
             info!(
@@ -65,6 +65,64 @@ pub async fn run_serve_command(
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     axum::serve(listener, app).await?;
     Ok(())
+}
+
+fn open_or_recover_db(db_path: &std::path::Path) -> Result<Database> {
+    let try_open = || -> Result<Database> {
+        let db = Database::open(db_path)?;
+        db.check_integrity()?;
+        Ok(db)
+    };
+    match try_open() {
+        Ok(db) => Ok(db),
+        Err(e) => {
+            let msg = e.to_string();
+            if db_path.exists()
+                && (msg.contains("malformed")
+                    || msg.contains("corrupt")
+                    || msg.contains("not a database")
+                    || msg.contains("integrity check failed"))
+            {
+                let ts = chrono::Utc::now().timestamp();
+                let backup = db_path.with_extension(format!("sqlite3.corrupt.{}.bak", ts));
+                warn!(
+                    "Database {:?} is corrupted ({}). Backing up to {:?} and recreating fresh DB...",
+                    db_path, msg, backup
+                );
+                let _ = fs::rename(db_path, &backup);
+                let base = db_path.to_string_lossy();
+                let _ = fs::remove_file(format!("{}-wal", base));
+                let _ = fs::remove_file(format!("{}-shm", base));
+                Database::open(db_path)
+            } else {
+                Err(e)
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_open_or_recover_corrupt_db() {
+        let dir = std::env::temp_dir().join("mymessages_test_corrupt_recover");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let db_path = dir.join("messages.sqlite3");
+        fs::write(&db_path, b"not a valid sqlite database file at all!!!").unwrap();
+
+        let db = open_or_recover_db(&db_path).unwrap();
+        assert!(db.check_integrity().is_ok());
+        let has_backup = fs::read_dir(&dir)
+            .unwrap()
+            .flatten()
+            .any(|e| e.file_name().to_string_lossy().contains(".corrupt."));
+        assert!(has_backup);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
 }
 
 fn spawn_uback_poller(state: AppState) {

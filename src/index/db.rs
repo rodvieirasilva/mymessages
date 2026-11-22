@@ -59,6 +59,15 @@ impl Database {
         &mut self.conn
     }
 
+    pub fn check_integrity(&self) -> Result<()> {
+        let res: String = self.conn.query_row("PRAGMA quick_check(1)", [], |r| r.get(0))?;
+        if res.eq_ignore_ascii_case("ok") {
+            Ok(())
+        } else {
+            anyhow::bail!("SQLite integrity check failed: {}", res)
+        }
+    }
+
     fn init_schema(&self, journal_mode: &str) -> Result<()> {
         self.conn.execute_batch(&format!(
             "

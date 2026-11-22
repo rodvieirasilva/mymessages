@@ -7,6 +7,7 @@ export function buildAppShell(initialTheme: 'dark' | 'light'): string {
   return `
     <header class="app-header">
       <div class="logo">
+        <button id="mobileSidebarBtn" class="mobile-sidebar-btn" data-testid="mobile-sidebar-button" title="Toggle conversations" aria-label="Toggle conversations">☰</button>
         <img src="/logo.svg" alt="mymessages" class="brand-logo" />
         <span>mymessages</span>
         <span class="version-badge" data-testid="version-badge">${versionLabel}</span>
