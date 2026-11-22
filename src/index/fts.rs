@@ -41,15 +41,15 @@ pub fn search_compiled(conn: &Connection, q: &CompiledQuery) -> Result<Vec<Searc
         JOIN conversations c ON c.id = m.conversation_id
         JOIN contacts ct ON ct.id = m.sender_id
         WHERE messages_fts MATCH ?1
-          AND (?2 IS NULL OR m.source_id = ?2)
+          AND (?2 IS NULL OR m.source_id LIKE ?2)
           AND (?3 IS NULL OR m.conversation_id = ?3 OR c.remote_id = ?3)
           AND (?4 IS NULL OR m.has_attachments = ?4)
           AND (?5 IS NULL OR m.is_from_me = ?5)
-          AND (?6 IS NULL OR EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND a.media_type = ?6))
+          AND (?6 IS NULL OR EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND a.media_type LIKE ?6))
           AND (?7 IS NULL OR ct.display_name LIKE ?7 OR ct.remote_id LIKE ?7)
           AND (?8 IS NULL OR m.timestamp >= ?8)
           AND (?9 IS NULL OR m.timestamp <= ?9)
-          AND (?12 IS NULL OR m.account_id = ?12)".to_string()
+          AND (?12 IS NULL OR m.account_id LIKE ?12)".to_string()
     } else {
         "SELECT 
             m.id, m.source_id, m.account_id, m.conversation_id, c.name, ct.display_name,
@@ -58,15 +58,15 @@ pub fn search_compiled(conn: &Connection, q: &CompiledQuery) -> Result<Vec<Searc
         FROM messages m
         JOIN conversations c ON c.id = m.conversation_id
         JOIN contacts ct ON ct.id = m.sender_id
-        WHERE (?2 IS NULL OR m.source_id = ?2)
+        WHERE (?2 IS NULL OR m.source_id LIKE ?2)
           AND (?3 IS NULL OR m.conversation_id = ?3 OR c.remote_id = ?3)
           AND (?4 IS NULL OR m.has_attachments = ?4)
           AND (?5 IS NULL OR m.is_from_me = ?5)
-          AND (?6 IS NULL OR EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND a.media_type = ?6))
+          AND (?6 IS NULL OR EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND a.media_type LIKE ?6))
           AND (?7 IS NULL OR ct.display_name LIKE ?7 OR ct.remote_id LIKE ?7)
           AND (?8 IS NULL OR m.timestamp >= ?8)
           AND (?9 IS NULL OR m.timestamp <= ?9)
-          AND (?12 IS NULL OR m.account_id = ?12)".to_string()
+          AND (?12 IS NULL OR m.account_id LIKE ?12)".to_string()
     };
 
     let mut param_index = 13;
