@@ -3,6 +3,7 @@ pub mod db_loader;
 pub mod media_index;
 pub mod msgstore;
 pub mod sms;
+pub mod telegram;
 pub mod wa_contacts;
 
 use std::fs;
