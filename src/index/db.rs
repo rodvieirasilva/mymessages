@@ -207,4 +207,16 @@ mod tests {
         assert!(tables.contains(&"messages".to_string()));
         assert!(tables.contains(&"messages_fts".to_string()));
     }
+
+    #[test]
+    fn test_database_open_uri() {
+        let dir = std::env::temp_dir().join("mymessages_test_db_uri");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let uri = format!("sqlite://{}/test.sqlite3?journal_mode=DELETE", dir.display());
+        let db = Database::open(&uri).unwrap();
+        let count: i64 = db.conn().query_row("SELECT COUNT(*) FROM sources", [], |r| r.get(0)).unwrap();
+        assert_eq!(count, 0);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
