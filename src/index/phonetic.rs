@@ -63,6 +63,29 @@ pub fn phonetic_key(word: &str) -> String {
     out.to_ascii_uppercase()
 }
 
+const STOP_WORDS: &[&str] = &[
+    // PT-BR
+    "a", "o", "as", "os", "de", "do", "da", "dos", "das", "em", "no", "na", "nos", "nas",
+    "um", "uma", "uns", "umas", "e", "ou", "mas", "que", "com", "por", "para", "se", "ao",
+    "aos", "como", "mais", "nao", "sim", "eu", "tu", "ele", "ela", "eles", "elas", "meu",
+    "minha", "seu", "sua",
+    // EN
+    "the", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by",
+    "from", "is", "are", "was", "were", "be", "been", "it", "this", "that", "i", "you",
+    "he", "she", "we", "they", "my", "your",
+];
+
+pub fn is_stop_word(word: &str) -> bool {
+    let norm = fold_accents(word.trim());
+    STOP_WORDS.contains(&norm.as_str())
+}
+
+pub fn filter_stop_words(query: &str) -> Vec<String> {
+    let tokens: Vec<String> = query.split_whitespace().map(|s| s.to_string()).collect();
+    let filtered: Vec<String> = tokens.iter().filter(|t| !is_stop_word(t)).cloned().collect();
+    if filtered.is_empty() { tokens } else { filtered }
+}
+
 const SYNONYM_GROUPS: &[&[&str]] = &[
     &["foto", "photo", "imagem", "image", "picture", "pic"],
     &["video", "vídeo", "filme", "movie"],
@@ -138,5 +161,14 @@ mod tests {
         assert!(expanded.contains("foto"));
         assert!(expanded.contains("photo"));
         assert!(expanded.contains(" OR "));
+    }
+
+    #[test]
+    fn test_stop_words_ptbr_and_en() {
+        assert!(is_stop_word("não"));
+        assert!(is_stop_word("the"));
+        assert!(!is_stop_word("alice"));
+        assert_eq!(filter_stop_words("a foto do contrato"), vec!["foto", "contrato"]);
+        assert_eq!(filter_stop_words("the a"), vec!["the", "a"]);
     }
 }
