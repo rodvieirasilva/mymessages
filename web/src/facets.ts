@@ -69,6 +69,7 @@ export function renderFacetBar(
   const sourceOptions: FacetOption[] = [
     { label: 'All Sources', value: undefined },
     { label: 'WhatsApp', value: 'whatsapp' },
+    { label: 'Telegram', value: 'telegram' },
     { label: 'Folder', value: 'folder' },
   ];
   const hasWaBusiness = accounts.some((a) => a.sources.includes('whatsapp_business'))

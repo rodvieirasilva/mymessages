@@ -69,6 +69,7 @@ impl UbackAdapter {
             ("whatsapp", "whatsapp"),
             ("whatsapp-business", "whatsapp_business"),
             ("snapshots/sms", "sms"),
+            ("telegram", "telegram"),
         ] {
             let wa_dir = self.backup_root.join(folder);
             if wa_dir.is_dir() && self.allows_account(&direct_name) {
@@ -100,6 +101,7 @@ impl UbackAdapter {
                 ("whatsapp", "whatsapp"),
                 ("whatsapp-business", "whatsapp_business"),
                 ("snapshots/sms", "sms"),
+                ("telegram", "telegram"),
             ] {
                 let wa_dir = acct_path.join(folder);
                 if wa_dir.is_dir() {
@@ -155,6 +157,10 @@ impl UbackAdapter {
 
         if target.source == "sms" {
             let msgs = sms::read_sms_snapshots(&target.wa_dir, &target.account, &vcf_contacts)?;
+            return Ok((msgs, warnings));
+        }
+        if target.source == "telegram" {
+            let msgs = telegram::read_telegram_dir(&target.wa_dir, &target.account)?;
             return Ok((msgs, warnings));
         }
 
