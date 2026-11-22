@@ -30,7 +30,7 @@ struct UbackTelegramRecord {
     is_from_me: bool,
 }
 
-/// Scan `<account>/telegram/` (SQLite `deltas/` & `ChatDeltas/` `.db` files, JSON exports,
+/// Scan `<account>/telegram/` (SQLite `deltas/` `.db` files, JSON exports,
 /// and media files) into `CanonicalMessage` items with `source = "telegram"`.
 pub fn read_telegram_dir(tg_root: &Path, account: &str) -> Result<Vec<CanonicalMessage>> {
     if !tg_root.is_dir() {
@@ -39,13 +39,11 @@ pub fn read_telegram_dir(tg_root: &Path, account: &str) -> Result<Vec<CanonicalM
     let mut messages = Vec::new();
     let mut seen_db_keys: HashSet<(i64, i64)> = HashSet::new();
 
-    // 1. Read SQLite delta DBs from both `deltas/` and legacy `ChatDeltas/`
+    // 1. Read SQLite delta DBs from `deltas/`
     let mut db_files = Vec::new();
-    for sub in ["deltas", "ChatDeltas"] {
-        let dir = tg_root.join(sub);
-        if dir.is_dir() {
-            collect_files_with_ext(&dir, "db", &mut db_files);
-        }
+    let deltas_dir = tg_root.join("deltas");
+    if deltas_dir.is_dir() {
+        collect_files_with_ext(&deltas_dir, "db", &mut db_files);
     }
     db_files.sort();
 
@@ -303,7 +301,6 @@ mod tests {
         let dir = std::env::temp_dir().join("mymessages_test_uback_tg");
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(dir.join("deltas/2026/11")).unwrap();
-        fs::create_dir_all(dir.join("ChatDeltas/2026/11")).unwrap();
         fs::create_dir_all(dir.join("images")).unwrap();
 
         let db_path = dir.join("deltas/2026/11/telegram_delta_20261122.db");
@@ -317,8 +314,8 @@ mod tests {
         .unwrap();
         drop(conn);
 
-        // Duplicate delta in legacy ChatDeltas/ should be deduplicated
-        fs::copy(&db_path, dir.join("ChatDeltas/2026/11/telegram_delta_legacy.db")).unwrap();
+        // Duplicate delta in deltas/ should be deduplicated
+        fs::copy(&db_path, dir.join("deltas/2026/11/telegram_delta_20261123.db")).unwrap();
 
         fs::write(
             dir.join("messages.json"),
