@@ -44,3 +44,20 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::index::Database;
+
+    #[test]
+    fn test_run_migrations_idempotent() {
+        let db = Database::in_memory().unwrap();
+        run_migrations(db.conn()).unwrap();
+        let count: i64 = db
+            .conn()
+            .query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, MIGRATIONS.len() as i64);
+    }
+}

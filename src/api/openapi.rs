@@ -1,8 +1,11 @@
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
+use crate::api::fields::{FieldInfo, FieldsResponse};
+use crate::api::state::IngestionStatus;
+use crate::api::stats::StatsResponse;
 use crate::api::webhook::WebhookResult;
-use crate::index::{AccountSummary, AttachmentInfo, ChatSummary, SearchQuery, SearchRequest, SearchResult};
+use crate::index::{AccountSummary, AttachmentInfo, ChatSummary, SearchQuery, SearchRequest, SearchResult, SourceStats};
 use crate::mcp::protocol::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 
 #[derive(OpenApi)]
@@ -17,6 +20,8 @@ use crate::mcp::protocol::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
         crate::api::webhook::evolution_webhook_handler,
         crate::api::webhook::waha_webhook_handler,
         crate::api::health::health_handler,
+        crate::api::stats::stats_handler,
+        crate::api::fields::fields_handler,
     ),
     components(
         schemas(
@@ -30,6 +35,11 @@ use crate::mcp::protocol::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
             JsonRpcResponse,
             JsonRpcError,
             WebhookResult,
+            StatsResponse,
+            SourceStats,
+            IngestionStatus,
+            FieldsResponse,
+            FieldInfo,
         )
     ),
     tags(

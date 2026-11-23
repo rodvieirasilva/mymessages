@@ -163,6 +163,15 @@ mod tests {
 
         let _ = fs::remove_dir_all(&dir);
     }
+
+    #[test]
+    fn test_cleanup_temp_files() {
+        let tmp = std::env::temp_dir().join("mymessages_dec_unit_test_cleanup.sqlite");
+        fs::write(&tmp, b"tmp").unwrap();
+        assert!(tmp.exists());
+        cleanup_temp_files();
+        assert!(!tmp.exists());
+    }
 }
 
 fn spawn_uback_poller(state: AppState) {
