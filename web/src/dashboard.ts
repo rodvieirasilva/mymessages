@@ -23,12 +23,30 @@ export function renderDashboard(container: HTMLElement, stats: VaultStats): void
           )
           .join('');
 
+  const ing = stats.ingestion;
+  let ingestionHtml = '';
+  if (ing?.active) {
+    const pct = ing.scanned_total > 0 ? Math.min(100, Math.round((ing.processed / ing.scanned_total) * 100)) : 0;
+    ingestionHtml = `
+      <div class="dashboard-progress-banner" data-testid="ingestion-progress">
+        <div class="dashboard-progress-top">
+          <strong>⏳ Processing backups (${ing.phase})...</strong>
+          <span>${ing.scanned_total > 0 ? `${ing.processed.toLocaleString()} / ${ing.scanned_total.toLocaleString()} (${pct}%)` : 'Scanning files...'} · +${ing.newly_indexed.toLocaleString()} new</span>
+        </div>
+        <div class="dashboard-progress-track">
+          <div class="dashboard-progress-fill" style="width: ${pct}%"></div>
+        </div>
+      </div>
+    `;
+  }
+
   container.innerHTML = `
     <div class="dashboard-inner">
       <div class="dashboard-header">
         <h2>Vault Dashboard</h2>
         <span class="dashboard-version">v${stats.version} · ${stats.commit} (${stats.build_time})</span>
       </div>
+      ${ingestionHtml}
       <div class="dashboard-cards">
         <div class="dashboard-card">
           <div class="dashboard-card-label">Database Size</div>

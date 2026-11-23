@@ -17,6 +17,9 @@ export function buildAppShell(initialTheme: 'dark' | 'light'): string {
         <button id="searchBtn" data-testid="search-button">Search</button>
       </div>
       <div class="header-actions">
+        <button id="syncIndicatorBtn" class="sync-indicator" data-testid="sync-indicator" style="display: none;" title="Indexing in progress — click for Dashboard">
+          ⏳ Syncing...
+        </button>
         <button id="dashboardToggleBtn" class="theme-toggle-btn" data-testid="dashboard-toggle-button" title="Toggle Dashboard">
           📊 Dashboard
         </button>

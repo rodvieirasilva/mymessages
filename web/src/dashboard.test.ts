@@ -30,4 +30,31 @@ describe('dashboard module', () => {
     expect(container.textContent).toContain('whatsapp');
     expect(container.textContent).toContain('sms');
   });
+
+  it('renders ingestion progress banner when active', () => {
+    const container = document.createElement('div');
+    renderDashboard(container, {
+      version: '0.2.0',
+      build_time: '2026-11-22',
+      commit: 'abc1234',
+      db_path: '/data/messages.sqlite3',
+      db_size_bytes: 1024,
+      total_messages: 50,
+      total_chats: 2,
+      sources: [],
+      ingestion: {
+        active: true,
+        phase: 'indexing',
+        scanned_total: 200,
+        processed: 100,
+        newly_indexed: 50,
+        last_completed_at: null,
+      },
+    });
+
+    const banner = container.querySelector('[data-testid="ingestion-progress"]');
+    expect(banner).not.toBeNull();
+    expect(banner?.textContent).toContain('50%');
+    expect(banner?.textContent).toContain('indexing');
+  });
 });

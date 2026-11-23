@@ -1,9 +1,21 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use serde::Serialize;
+use utoipa::ToSchema;
 
 use crate::config::AppConfig;
 use crate::index::Database;
 use crate::storage::{MaildirStorage, StoragePipeline};
+
+#[derive(Debug, Clone, Default, Serialize, ToSchema)]
+pub struct IngestionStatus {
+    pub active: bool,
+    pub phase: String,
+    pub scanned_total: usize,
+    pub processed: usize,
+    pub newly_indexed: usize,
+    pub last_completed_at: Option<i64>,
+}
 
 #[derive(Clone)]
 pub struct AppState {
@@ -13,6 +25,7 @@ pub struct AppState {
     pub data_dir: PathBuf,
     pub db_path: PathBuf,
     pub config: AppConfig,
+    pub ingestion: Arc<Mutex<IngestionStatus>>,
 }
 
 impl AppState {
@@ -31,6 +44,11 @@ impl AppState {
             data_dir,
             db_path,
             config,
+            ingestion: Arc::new(Mutex::new(IngestionStatus {
+                active: false,
+                phase: "idle".to_string(),
+                ..Default::default()
+            })),
         }
     }
 }

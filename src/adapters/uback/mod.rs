@@ -66,9 +66,9 @@ impl UbackAdapter {
             .to_string();
         let mut found_direct = false;
         for (folder, source) in [
+            ("snapshots/sms", "sms"),
             ("whatsapp", "whatsapp"),
             ("whatsapp-business", "whatsapp_business"),
-            ("snapshots/sms", "sms"),
             ("telegram", "telegram"),
         ] {
             let wa_dir = self.backup_root.join(folder);
@@ -98,9 +98,9 @@ impl UbackAdapter {
                 continue;
             }
             for (folder, source) in [
+                ("snapshots/sms", "sms"),
                 ("whatsapp", "whatsapp"),
                 ("whatsapp-business", "whatsapp_business"),
-                ("snapshots/sms", "sms"),
                 ("telegram", "telegram"),
             ] {
                 let wa_dir = acct_path.join(folder);

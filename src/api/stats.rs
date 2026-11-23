@@ -5,7 +5,7 @@ use axum::Json;
 use serde::Serialize;
 use utoipa::ToSchema;
 
-use crate::api::state::AppState;
+use crate::api::state::{AppState, IngestionStatus};
 use crate::index::{get_vault_stats, SourceStats};
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -18,6 +18,7 @@ pub struct StatsResponse {
     pub total_messages: i64,
     pub total_chats: i64,
     pub sources: Vec<SourceStats>,
+    pub ingestion: IngestionStatus,
 }
 
 #[utoipa::path(
@@ -34,6 +35,12 @@ pub async fn stats_handler(State(state): State<AppState>) -> impl IntoResponse {
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "DB lock failed").into_response(),
     };
 
+    let ingestion = state
+        .ingestion
+        .lock()
+        .map(|g| g.clone())
+        .unwrap_or_default();
+
     match get_vault_stats(guard.conn(), &state.db_path) {
         Ok(stats) => Json(StatsResponse {
             version: env!("CARGO_PKG_VERSION"),
@@ -44,6 +51,7 @@ pub async fn stats_handler(State(state): State<AppState>) -> impl IntoResponse {
             total_messages: stats.total_messages,
             total_chats: stats.total_chats,
             sources: stats.sources,
+            ingestion,
         })
         .into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),

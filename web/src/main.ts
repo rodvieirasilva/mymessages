@@ -41,31 +41,68 @@ async function init() {
   }
 
   const themeToggleBtn = document.getElementById('themeToggleBtn') as HTMLButtonElement;
+  const syncIndicatorBtn = document.getElementById('syncIndicatorBtn') as HTMLButtonElement | null;
   const dashboardToggleBtn = document.getElementById('dashboardToggleBtn') as HTMLButtonElement;
   const appMain = document.querySelector('.app-main') as HTMLElement | null;
   const dashboardView = document.getElementById('dashboardView') as HTMLElement | null;
 
   if (dashboardToggleBtn && appMain && dashboardView) {
     let showingDashboard = false;
+    const openDashboard = async () => {
+      showingDashboard = true;
+      appMain.style.display = 'none';
+      dashboardView.style.display = 'block';
+      dashboardToggleBtn.textContent = '💬 Messages';
+      dashboardView.innerHTML = '<div class="empty-state">Loading vault stats...</div>';
+      try {
+        const stats = await fetchStats();
+        renderDashboard(dashboardView, stats);
+      } catch (err) {
+        dashboardView.innerHTML = `<div class="empty-state">Failed to load stats: ${String(err)}</div>`;
+      }
+    };
+
     dashboardToggleBtn.onclick = async () => {
-      showingDashboard = !showingDashboard;
-      if (showingDashboard) {
-        appMain.style.display = 'none';
-        dashboardView.style.display = 'block';
-        dashboardToggleBtn.textContent = '💬 Messages';
-        dashboardView.innerHTML = '<div class="empty-state">Loading vault stats...</div>';
-        try {
-          const stats = await fetchStats();
-          renderDashboard(dashboardView, stats);
-        } catch (err) {
-          dashboardView.innerHTML = `<div class="empty-state">Failed to load stats: ${String(err)}</div>`;
-        }
+      if (!showingDashboard) {
+        await openDashboard();
       } else {
+        showingDashboard = false;
         dashboardView.style.display = 'none';
         appMain.style.display = 'flex';
         dashboardToggleBtn.textContent = '📊 Dashboard';
       }
     };
+
+    if (syncIndicatorBtn) {
+      syncIndicatorBtn.onclick = () => {
+        if (!showingDashboard) {
+          void openDashboard();
+        }
+      };
+    }
+
+    const pollSyncStatus = async () => {
+      try {
+        const stats = await fetchStats();
+        const ing = stats.ingestion;
+        if (syncIndicatorBtn) {
+          if (ing?.active) {
+            const pct = ing.scanned_total > 0 ? Math.min(100, Math.round((ing.processed / ing.scanned_total) * 100)) : 0;
+            syncIndicatorBtn.textContent = ing.scanned_total > 0 ? `⏳ Syncing ${pct}%` : '⏳ Syncing...';
+            syncIndicatorBtn.style.display = 'inline-flex';
+          } else {
+            syncIndicatorBtn.style.display = 'none';
+          }
+        }
+        if (showingDashboard) {
+          renderDashboard(dashboardView, stats);
+        }
+      } catch {
+        // Ignore transient poll errors
+      }
+    };
+    void pollSyncStatus();
+    setInterval(() => void pollSyncStatus(), 5000);
   }
 
   if (themeToggleBtn) {

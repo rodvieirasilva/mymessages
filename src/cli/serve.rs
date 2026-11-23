@@ -59,12 +59,52 @@ pub async fn run_serve_command(
     info!("Starting mymessages server on http://{}", addr);
 
     let state = AppState::new(db, base_data_dir, cfg);
+    let shutdown_state = state.clone();
     spawn_uback_poller(state.clone());
     let app = create_router(state, static_opt);
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;
-    axum::serve(listener, app).await?;
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
+
+    info!("Shutting down cleanly: checkpointing SQLite DB and cleaning temp files...");
+    if let Ok(guard) = shutdown_state.db.lock() {
+        let _ = guard.conn().execute_batch("PRAGMA wal_checkpoint(TRUNCATE); PRAGMA optimize;");
+    }
+    cleanup_temp_files();
+    info!("Shutdown complete.");
     Ok(())
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        let _ = tokio::signal::ctrl_c().await;
+    };
+    #[cfg(unix)]
+    let terminate = async {
+        if let Ok(mut sig) = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            sig.recv().await;
+        }
+    };
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+}
+
+fn cleanup_temp_files() {
+    if let Ok(entries) = fs::read_dir(std::env::temp_dir()) {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.starts_with("mymessages_dec_") {
+                let _ = fs::remove_file(entry.path());
+            }
+        }
+    }
 }
 
 fn open_or_recover_db(db_path: &std::path::Path) -> Result<Database> {
@@ -142,6 +182,13 @@ fn spawn_uback_poller(state: AppState) {
             let root = backup_root.clone();
             let cfg_clone = uback_cfg.clone();
             let res = tokio::task::spawn_blocking(move || {
+                if let Ok(mut ing) = st.ingestion.lock() {
+                    ing.active = true;
+                    ing.phase = "scanning".to_string();
+                    ing.scanned_total = 0;
+                    ing.processed = 0;
+                    ing.newly_indexed = 0;
+                }
                 let _started = std::time::Instant::now();
                 let creds = CredentialsStore::load(cfg_clone.credentials_file.as_deref());
                 let adapter = UbackAdapter::new(root, creds, cfg_clone.accounts, cfg_clone.index_media_without_db);
@@ -149,14 +196,24 @@ fn spawn_uback_poller(state: AppState) {
                 for w in &summary.warnings {
                     warn!("UBack poller warning: {}", w);
                 }
+                let total = summary.messages.len();
+                if let Ok(mut ing) = st.ingestion.lock() {
+                    ing.phase = "indexing".to_string();
+                    ing.scanned_total = total;
+                }
                 let mut newly_indexed = 0usize;
-                for msg in &summary.messages {
+                for (idx, msg) in summary.messages.iter().enumerate() {
                     let hash = msg.compute_content_hash();
                     let already = {
                         let guard = st.db.lock().map_err(|e| anyhow::anyhow!("DB lock: {}", e))?;
                         is_hash_indexed(guard.conn(), &hash)?
                     };
                     if already {
+                        if idx % 100 == 0 {
+                            if let Ok(mut ing) = st.ingestion.lock() {
+                                ing.processed = idx + 1;
+                            }
+                        }
                         continue;
                     }
                     st.pipeline.write_all(msg, &hash)?;
@@ -173,9 +230,29 @@ fn spawn_uback_poller(state: AppState) {
                         }
                     }
                     newly_indexed += 1;
+                    if newly_indexed % 25 == 0 || idx + 1 == total {
+                        if let Ok(mut ing) = st.ingestion.lock() {
+                            ing.processed = idx + 1;
+                            ing.newly_indexed = newly_indexed;
+                        }
+                    }
+                }
+                if let Ok(mut ing) = st.ingestion.lock() {
+                    ing.active = false;
+                    ing.phase = "idle".to_string();
+                    ing.processed = total;
+                    ing.newly_indexed = newly_indexed;
+                    ing.last_completed_at = Some(chrono::Utc::now().timestamp());
                 }
                 Ok::<usize, anyhow::Error>(newly_indexed)
             }).await;
+
+            if let Ok(mut ing) = state.ingestion.lock() {
+                if ing.active {
+                    ing.active = false;
+                    ing.phase = "idle".to_string();
+                }
+            }
 
             match res {
                 Ok(Ok(n)) if n > 0 => info!("UBack poller indexed {} new messages", n),

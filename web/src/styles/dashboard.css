@@ -90,3 +90,44 @@
   text-align: center;
   color: var(--text-secondary);
 }
+
+.sync-indicator {
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background-color: rgba(59, 130, 246, 0.15);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dashboard-progress-banner {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.dashboard-progress-top {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+}
+
+.dashboard-progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background-color: var(--bg-card);
+  overflow: hidden;
+}
+
+.dashboard-progress-fill {
+  height: 100%;
+  background-color: var(--accent);
+  transition: width 0.3s ease;
+}

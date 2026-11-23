@@ -12,6 +12,15 @@ export interface SourceStats {
   chat_count: number;
 }
 
+export interface IngestionStatus {
+  active: boolean;
+  phase: string;
+  scanned_total: number;
+  processed: number;
+  newly_indexed: number;
+  last_completed_at: number | null;
+}
+
 export interface VaultStats {
   version: string;
   build_time: string;
@@ -21,6 +30,7 @@ export interface VaultStats {
   total_messages: number;
   total_chats: number;
   sources: SourceStats[];
+  ingestion?: IngestionStatus;
 }
 
 export async function fetchStats(): Promise<VaultStats> {
