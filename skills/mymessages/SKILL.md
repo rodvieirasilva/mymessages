@@ -185,7 +185,18 @@ curl -s "http://localhost:8765/v1/chats/conv_123/messages?limit=30&before=171000
 curl -s "http://localhost:8765/v1/attachments/att_456" -o contract.pdf
 ```
 
-### 5. API Documentation
+### 5. Vault Stats & Live Ingestion Progress (`GET /v1/stats`)
+```bash
+curl -s "http://localhost:8765/v1/stats" | jq .
+```
+
+### 6. Indexed & Facetable Fields (`GET /v1/fields`)
+Returns all searchable/facetable fields, Lucene keys, and whether wildcard (`*` / `%`) matching is supported:
+```bash
+curl -s "http://localhost:8765/v1/fields" | jq .
+```
+
+### 7. API Documentation
 - **OpenAPI 3.1 Spec**: `http://localhost:8765/api-docs/openapi.json`
 - **Swagger UI**: `http://localhost:8765/swagger-ui/`
 

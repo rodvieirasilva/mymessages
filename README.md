@@ -191,6 +191,7 @@ path = "./data/mail"
 name = "sqlite"
 type = "sqlite"
 enabled = true
+# Supports plain paths or SQLite URI connection strings (e.g. "sqlite:///data/messages.sqlite3?journal_mode=DELETE" or "file:...?journal_mode=WAL")
 path = "./data/messages.sqlite3"
 
 [adapters.evolution]
@@ -237,7 +238,7 @@ See [docs/MCP.md](docs/MCP.md) for tool signatures, `stdio` configs, and `http` 
 ### Option 2: Query Skill (CLI & HTTP REST)
 For agents operating via terminal commands or REST HTTP calls:
 - CLI search: `mymessages search "invoice"`
-- HTTP REST API: `GET /v1/search?query=invoice`, `GET /v1/chats`
+- HTTP REST API: `GET /v1/search?query=invoice`, `GET /v1/chats`, `GET /v1/fields`, `GET /v1/stats`
 - See [skills/mymessages/SKILL.md](skills/mymessages/SKILL.md) for workflows, query options, and curl examples.
 
 > [!NOTE]

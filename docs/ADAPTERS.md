@@ -67,7 +67,7 @@ WAHA (`devlikeapro/waha`) provides another self-hosted WhatsApp HTTP engine (sup
 
 ## 4. UBack Adapter (WhatsApp Media & `.crypt15` Backups)
 
-`mymessages` natively supports the [UBack](https://github.com/rodvieirasilva/uback) Android backup layout for both **WhatsApp** (`whatsapp/`) and **WhatsApp Business** (`whatsapp-business/`) across multiple device/account folders — **with zero media duplication**.
+`mymessages` natively supports the [UBack](https://github.com/rodvieirasilva/uback) Android backup layout for **SMS** (`snapshots/sms/`), **WhatsApp** (`whatsapp/`), **WhatsApp Business** (`whatsapp-business/`), and **Telegram** (`telegram/deltas/`, JSON exports, and media) across multiple device/account folders — **with zero media duplication**.
 
 ### Expected Directory Layout
 ```text
