@@ -52,7 +52,7 @@ use crate::mcp::protocol::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
     ),
     info(
         title = "mymessages API",
-        version = "0.2.0",
+        version = "0.3.0",
         description = "Local-first message vault, Maildir archiver, and SQLite FTS5 search engine"
     )
 )]
