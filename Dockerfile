@@ -10,7 +10,7 @@ RUN npm run build
 FROM rust:1.99-alpine AS rust-builder
 RUN apk add --no-cache musl-dev gcc make curl
 WORKDIR /app
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.toml Cargo.lock build.rs ./
 COPY src/ ./src/
 COPY --from=web-builder /app/web/dist ./web/dist
 RUN cargo build --release

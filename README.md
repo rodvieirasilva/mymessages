@@ -5,7 +5,7 @@
 # mymessages
 
 [![CI](https://github.com/rodvieirasilva/mymessages/actions/workflows/ci.yml/badge.svg)](https://github.com/rodvieirasilva/mymessages/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-v0.3.1-blue.svg)](https://github.com/rodvieirasilva/mymessages/releases)
+[![Version](https://img.shields.io/badge/version-v0.3.2-blue.svg)](https://github.com/rodvieirasilva/mymessages/releases)
 [![Rust](https://img.shields.io/badge/rust-1.99.1-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-green.svg)](LICENSE)
 
