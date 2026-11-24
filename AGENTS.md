@@ -102,6 +102,14 @@ mise run web:dev     # Run frontend Vite dev server
 - Follow Conventional Commits: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`.
 - In all user communications and PR descriptions, use clickable `file://` Markdown links for file references.
 
+### Rule 9: Web UI Automation & Complete Release Checklist
+- **Preserve Automation Contracts**: The Web UI (React + TanStack Router + TanStack Query + Tailwind CSS v4) must preserve URL query hydration (`?q=...&account=...&source=...&media_type=...&has_media=...`), multiline wrapping on `.search-facets-bar`, and `data-testid` / `data-facet-group` / `data-facet-value` attributes relied on by `scripts/capture_screenshot.mjs` and `scripts/generate_demo_gif.mjs`.
+- **Full Release Procedure**: Whenever cutting a release, follow every step in [docs/RELEASING.md](docs/RELEASING.md):
+  1. Bump version in `Cargo.toml`, `Cargo.lock`, `web/package.json`, `src/api/openapi.rs`, and `README.md`.
+  2. Run `mise run test` and `mise run coverage` (>= 80% Rust & Web).
+  3. Regenerate UI assets via `mise run screenshot` and `mise run gif`, and verify the GIF reflects live filtering.
+  4. Run `mise run build`, commit all changes, create annotated tag `vX.Y.Z`, and push `git push origin master --tags`.
+
 ---
 
 ## 3. Directory Layout

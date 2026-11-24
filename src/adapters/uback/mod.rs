@@ -136,6 +136,10 @@ impl UbackAdapter {
             }
         }
 
+        summary
+            .messages
+            .sort_by_key(|m| m.id.starts_with("uback_media_") || m.id.starts_with("tg_media_"));
+
         Ok(summary)
     }
 
