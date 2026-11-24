@@ -34,18 +34,25 @@ mise run build
 
 ### Step 1: Bump Versions
 Update the version number in:
-1. `Cargo.toml`: `version = "X.Y.Z"`
-2. `web/package.json`: `"version": "X.Y.Z"`
-3. `web/src/layout.ts`: `<span class="version-badge">vX.Y.Z</span>`
-4. `src/api/openapi.rs`: `version = "X.Y.Z"`
-5. `README.md`: version badge `vX.Y.Z`
+1. `Cargo.toml`: `version = "X.Y.Z"` (then run `cargo check` / `mise run test` to update `Cargo.lock`)
+2. `web/package.json`: `"version": "X.Y.Z"` (automatically injected into the Web UI badge via Vite `__APP_VERSION__` in `web/src/lib/format.ts`)
+3. `src/api/openapi.rs`: `version = "X.Y.Z"`
+4. `README.md`: version badge `vX.Y.Z`
 
-Commit the version bump:
+### Step 2: Regenerate Screenshots & Demo GIF
+Rebuild the Web UI and regenerate visual assets whenever the UI changes:
 ```bash
-git commit -am "chore: bump version to vX.Y.Z"
+mise run screenshot   # Updates docs/assets/screenshot.png, screenshot-dark.png, screenshot-light.png
+mise run gif          # Updates docs/assets/demo.gif
 ```
 
-### Step 2: Tag and Push
+Commit the version bump and updated assets:
+```bash
+git add Cargo.toml Cargo.lock web/package.json src/api/openapi.rs README.md docs/assets/
+git commit -m "chore(release): bump version to vX.Y.Z and update WebUI assets"
+```
+
+### Step 3: Tag and Push
 Create an annotated Git tag matching the version:
 
 ```bash
