@@ -40,14 +40,30 @@ export const queryClient = new QueryClient({
   },
 });
 
+function readInitialFilters(): SearchFilters {
+  if (typeof window === 'undefined') return { query: '' };
+  const params = new URLSearchParams(window.location.search);
+  const mediaType = params.get('media_type') || undefined;
+  const hasMediaParam = params.get('has_media');
+  const isFromMeParam = params.get('is_from_me');
+  return {
+    query: params.get('q') || params.get('query') || '',
+    source: params.get('source') || undefined,
+    account: params.get('account') || undefined,
+    media_type: mediaType,
+    has_media: hasMediaParam !== null ? hasMediaParam === 'true' : mediaType ? true : undefined,
+    is_from_me: isFromMeParam !== null ? isFromMeParam === 'true' : undefined,
+  };
+}
+
 function RootLayout() {
   const navigate = useNavigate();
   const [theme, setTheme] = useState<'dark' | 'light'>(() => initTheme());
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [searchInput, setSearchInput] = useState('');
+  const [filters, setFilters] = useState<SearchFilters>(() => readInitialFilters());
+  const [searchInput, setSearchInput] = useState(() => readInitialFilters().query);
   const [chatFilterInput, setChatFilterInput] = useState('');
   const [debouncedChatFilter, setDebouncedChatFilter] = useState('');
-  const [filters, setFilters] = useState<SearchFilters>({ query: '' });
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedChatFilter(chatFilterInput.trim()), 250);
@@ -66,12 +82,13 @@ function RootLayout() {
     staleTime: 60_000,
   });
 
+  const effectiveChatQuery = debouncedChatFilter || filters.query.trim() || undefined;
   const chatsQuery = useQuery({
-    queryKey: ['chats', filters.source, filters.account, debouncedChatFilter, filters.has_media, filters.media_type, filters.is_from_me],
+    queryKey: ['chats', filters.source, filters.account, effectiveChatQuery, filters.has_media, filters.media_type, filters.is_from_me],
     queryFn: ({ signal }) =>
       fetchChats(
         filters.source,
-        debouncedChatFilter || undefined,
+        effectiveChatQuery,
         filters.account,
         {
           has_media: filters.has_media,

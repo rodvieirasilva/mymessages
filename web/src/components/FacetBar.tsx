@@ -23,11 +23,15 @@ function FacetRow({
   onSelect: (val: string | undefined) => void;
 }) {
   return (
-    <div className="flex items-center gap-1.5 shrink-0" data-testid="facet-group">
+    <div
+      className="flex flex-wrap items-center gap-1.5"
+      data-testid="facet-group"
+      data-facet-group={label.toLowerCase()}
+    >
       <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
         {label}:
       </span>
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         {options.map((opt) => {
           const active = opt.value === current;
           return (
@@ -35,6 +39,7 @@ function FacetRow({
               key={opt.label}
               type="button"
               data-testid="facet-pill"
+              data-facet-value={opt.value || 'all'}
               onClick={() => onSelect(opt.value)}
               className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors whitespace-nowrap ${
                 active
@@ -82,7 +87,7 @@ export function FacetBar({ filters, accounts, onChange }: FacetBarProps) {
   return (
     <div
       data-testid="search-facets-bar"
-      className="shrink-0 flex items-center gap-4 overflow-x-auto custom-scroll border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 px-3 py-2"
+      className="shrink-0 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 px-3 py-2"
     >
       {accounts.length > 0 && (
         <FacetRow
