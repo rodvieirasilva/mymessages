@@ -150,7 +150,8 @@ mise run web:dev     # Run frontend Vite dev server
 
 Before creating a commit or opening a pull request, run:
 
-1. `mise run test` — Ensure all unit tests pass.
-2. `mise run e2e` — Ensure end-to-end sync, search, and static file tests pass.
-3. `mise run coverage` — Confirm line coverage is `>= 80%` on both Rust and Web.
-4. `mise run build` — Verify production web bundle and Rust release binary compile without warnings.
+1. `mise run secrets` — Ensure zero leaked credentials or secrets (`gitleaks`).
+2. `mise run test` — Ensure all unit tests (and secret scan) pass.
+3. `mise run e2e` — Ensure end-to-end sync, search, and static file tests pass.
+4. `mise run coverage` — Confirm line coverage is `>= 80%` on both Rust and Web.
+5. `mise run build` — Verify production web bundle and Rust release binary compile without warnings.
