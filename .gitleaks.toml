@@ -1,0 +1,11 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Allow synthetic test fixtures and documentation curl examples"
+paths = [
+  '''src/adapters/uback/crypt15_test\.rs$''',
+  '''src/adapters/uback/uback_test\.rs$''',
+  '''src/config/credentials\.rs$''',
+  '''skills/.*/SKILL\.md$''',
+]

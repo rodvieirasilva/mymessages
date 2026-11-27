@@ -3,6 +3,7 @@
 [tools]
 rust = "1.99.1"
 node = "26"
+gitleaks = "latest"
 
 [env]
 RUST_LOG = "info"
@@ -18,9 +19,13 @@ run = "cargo test"
 description = "Run web frontend unit tests"
 run = "npm --prefix web test"
 
+[tasks.secrets]
+description = "Scan git history and workspace for leaked credentials with gitleaks"
+run = "gitleaks git --no-banner --redact"
+
 [tasks.test]
 description = "Run all unit and integration tests"
-depends = ["test:rust", "test:web"]
+depends = ["secrets", "test:rust", "test:web"]
 
 [tasks."coverage:rust"]
 description = "Run Rust test coverage and enforce 80% threshold"
