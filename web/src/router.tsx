@@ -124,6 +124,10 @@ function RootLayout() {
           searchValue={searchInput}
           onSearchChange={setSearchInput}
           onSearchSubmit={handleSearchSubmit}
+          onSearchClear={() => {
+            setSearchInput('');
+            updateFilters({ query: '' });
+          }}
           ingestion={statsQuery.data?.ingestion}
         />
         <div className="flex-1 flex min-h-0 overflow-hidden">

@@ -138,7 +138,7 @@ impl UbackAdapter {
 
         summary.messages.sort_by_key(|m| {
             let is_unlinked = m.id.starts_with("uback_media_") || m.id.starts_with("tg_media_");
-            if is_unlinked {
+            let tier = if is_unlinked {
                 2u8
             } else if !m.attachments.is_empty()
                 || m.body.as_deref().map(|b| b.trim().is_empty()).unwrap_or(true)
@@ -146,7 +146,13 @@ impl UbackAdapter {
                 1u8
             } else {
                 0u8
-            }
+            };
+            (tier, std::cmp::Reverse(m.timestamp))
+        });
+
+        let mut seen_ids = std::collections::HashSet::new();
+        summary.messages.retain(|m| {
+            seen_ids.insert((m.source.clone(), m.account.clone(), m.id.clone()))
         });
 
         Ok(summary)

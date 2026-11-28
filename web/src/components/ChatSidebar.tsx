@@ -63,8 +63,19 @@ export function ChatSidebar({
               onChange={(e) => onChatFilterChange(e.target.value)}
               data-testid="chat-search-input"
               placeholder="Filter chats (e.g. alice*)..."
-              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 pl-8 pr-7 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
             />
+            {chatFilter && (
+              <button
+                type="button"
+                onClick={() => onChatFilterChange('')}
+                data-testid="clear-chat-filter-button"
+                aria-label="Clear chat filter"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </div>
 

@@ -221,9 +221,9 @@ fn test_uback_sms_snapshots() {
     assert_eq!(summary.messages[0].source, "sms");
     assert_eq!(summary.messages[0].account, "phone_sms");
     assert_eq!(summary.messages[0].conversation_name.as_deref(), Some("Alice Smith"));
-    assert_eq!(summary.messages[0].sender.name.as_deref(), Some("Alice Smith"));
-    assert!(!summary.messages[0].is_from_me);
-    assert!(summary.messages[1].is_from_me);
+    assert!(summary.messages[0].is_from_me);
+    assert_eq!(summary.messages[1].sender.name.as_deref(), Some("Alice Smith"));
+    assert!(!summary.messages[1].is_from_me);
 
     let _ = fs::remove_dir_all(&root);
 }

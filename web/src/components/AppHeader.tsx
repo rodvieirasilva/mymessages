@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { BarChart3, ExternalLink, Menu, MessageSquare, Moon, Search, Sun } from 'lucide-react';
+import { BarChart3, ExternalLink, Menu, MessageSquare, Moon, Search, Sun, X } from 'lucide-react';
 import type { IngestionStatus } from '../api';
 import { getVersionLabel } from '../lib/format';
 
@@ -10,6 +10,7 @@ export interface AppHeaderProps {
   searchValue: string;
   onSearchChange: (val: string) => void;
   onSearchSubmit: () => void;
+  onSearchClear: () => void;
   ingestion?: IngestionStatus;
 }
 
@@ -20,6 +21,7 @@ export function AppHeader({
   searchValue,
   onSearchChange,
   onSearchSubmit,
+  onSearchClear,
   ingestion,
 }: AppHeaderProps) {
   const versionLabel = getVersionLabel();
@@ -68,8 +70,19 @@ export function AppHeader({
               onChange={(e) => onSearchChange(e.target.value)}
               data-testid="search-input"
               placeholder="Search text or Lucene (e.g. from:Alice source:telegram)..."
-              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 pl-8 pr-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 pl-8 pr-8 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
             />
+            {searchValue && (
+              <button
+                type="button"
+                onClick={onSearchClear}
+                data-testid="clear-search-button"
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
           <button
             type="submit"
