@@ -7,6 +7,7 @@ import {
   createRouter,
   useNavigate,
   useParams,
+  useRouterState,
 } from '@tanstack/react-router';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { fetchAccounts, fetchChats, fetchStats } from './api';
@@ -58,6 +59,7 @@ function readInitialFilters(): SearchFilters {
 
 function RootLayout() {
   const navigate = useNavigate();
+  const isDashboard = useRouterState({ select: (s) => s.location.pathname === '/dashboard' });
   const [theme, setTheme] = useState<'dark' | 'light'>(() => initTheme());
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [filters, setFilters] = useState<SearchFilters>(() => readInitialFilters());
@@ -76,10 +78,13 @@ function RootLayout() {
     refetchInterval: 5000,
   });
 
+  const isSyncing = Boolean(statsQuery.data?.ingestion?.active);
+
   const accountsQuery = useQuery({
     queryKey: ['accounts'],
     queryFn: () => fetchAccounts(),
     staleTime: 60_000,
+    refetchInterval: isSyncing ? 5000 : false,
   });
 
   const effectiveChatQuery = debouncedChatFilter || filters.query.trim() || undefined;
@@ -97,6 +102,7 @@ function RootLayout() {
         },
         signal,
       ),
+    refetchInterval: isSyncing ? 5000 : false,
   });
 
   const updateFilters = (patch: Partial<SearchFilters>) => {
@@ -121,25 +127,29 @@ function RootLayout() {
           ingestion={statsQuery.data?.ingestion}
         />
         <div className="flex-1 flex min-h-0 overflow-hidden">
-          <ChatSidebar
-            chats={chatsQuery.data ?? []}
-            isLoading={chatsQuery.isLoading}
-            isError={chatsQuery.isError}
-            onRetry={() => void chatsQuery.refetch()}
-            chatFilter={chatFilterInput}
-            onChatFilterChange={setChatFilterInput}
-            mobileOpen={mobileSidebarOpen}
-            onCloseMobile={() => setMobileSidebarOpen(false)}
-          />
-          <main className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
-            <FacetBar
-              filters={filters}
-              accounts={accountsQuery.data ?? []}
-              onChange={(patch) => {
-                updateFilters(patch);
-                void navigate({ to: '/' });
-              }}
+          {!isDashboard && (
+            <ChatSidebar
+              chats={chatsQuery.data ?? []}
+              isLoading={chatsQuery.isLoading}
+              isError={chatsQuery.isError}
+              onRetry={() => void chatsQuery.refetch()}
+              chatFilter={chatFilterInput}
+              onChatFilterChange={setChatFilterInput}
+              mobileOpen={mobileSidebarOpen}
+              onCloseMobile={() => setMobileSidebarOpen(false)}
             />
+          )}
+          <main className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
+            {!isDashboard && (
+              <FacetBar
+                filters={filters}
+                accounts={accountsQuery.data ?? []}
+                onChange={(patch) => {
+                  updateFilters(patch);
+                  void navigate({ to: '/' });
+                }}
+              />
+            )}
             <Outlet />
           </main>
         </div>

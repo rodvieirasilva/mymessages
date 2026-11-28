@@ -81,16 +81,6 @@ export function AppHeader({
         </form>
 
         <nav className="order-2 lg:order-3 ml-auto flex items-center gap-1.5 sm:gap-2">
-          {ingestion?.active && (
-            <Link
-              to="/dashboard"
-              data-testid="sync-indicator"
-              className="inline-flex items-center gap-1 rounded-full border border-blue-500/50 bg-blue-500/15 px-2.5 py-1 text-xs font-semibold text-blue-600 dark:text-blue-300 animate-pulse"
-            >
-              ⏳ {ingestion.scanned_total > 0 ? `${pct}%` : 'Syncing'}
-            </Link>
-          )}
-
           <Link
             to="/"
             activeProps={{ className: 'bg-blue-600 text-white border-blue-600' }}
@@ -110,6 +100,14 @@ export function AppHeader({
           >
             <BarChart3 className="h-4 w-4" />
             <span className="hidden sm:inline">Dashboard</span>
+            {ingestion?.active && (
+              <span
+                data-testid="sync-indicator"
+                className="inline-flex items-center rounded-full bg-blue-500/20 px-1.5 py-0.5 text-[10px] font-semibold animate-pulse"
+              >
+                ⏳ {ingestion.scanned_total > 0 ? `${pct}%` : 'Sync'}
+              </span>
+            )}
           </Link>
 
           <button

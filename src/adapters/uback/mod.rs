@@ -136,9 +136,18 @@ impl UbackAdapter {
             }
         }
 
-        summary
-            .messages
-            .sort_by_key(|m| m.id.starts_with("uback_media_") || m.id.starts_with("tg_media_"));
+        summary.messages.sort_by_key(|m| {
+            let is_unlinked = m.id.starts_with("uback_media_") || m.id.starts_with("tg_media_");
+            if is_unlinked {
+                2u8
+            } else if !m.attachments.is_empty()
+                || m.body.as_deref().map(|b| b.trim().is_empty()).unwrap_or(true)
+            {
+                1u8
+            } else {
+                0u8
+            }
+        });
 
         Ok(summary)
     }
